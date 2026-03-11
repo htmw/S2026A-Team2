@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  orchestrator:
+    build:
+      context: ./backend/orchestrator
+      dockerfile: Dockerfile
+    container_name: orchestrator-service
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  mapper:
+    build:
+      context: ./backend/mapper
+      dockerfile: Dockerfile
+    container_name: mapper-service
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+
+  aggregator:
+    build:
+      context: ./backend/aggregator
+      dockerfile: Dockerfile
+    container_name: aggregator-service
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: streamlit-frontend
+    ports:
+      - "8501:8501"
+    restart: unless-stopped

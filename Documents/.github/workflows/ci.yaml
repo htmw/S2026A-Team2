@@ -1,0 +1,76 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  ci-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+          if [ -f backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt
+          fi
+
+          if [ -f frontend/requirements.txt ]; then
+            pip install -r frontend/requirements.txt
+          fi
+
+          pip install pytest ruff
+
+      - name: Run lint
+        run: |
+          ruff check . || echo "Lint warnings found or Ruff not fully configured yet"
+
+      - name: Run tests if present
+        run: |
+          if [ -d tests ]; then
+            pytest -v tests
+          elif [ -d backend/tests ]; then
+            pytest -v backend/tests
+          else
+            echo "No tests folder found yet"
+          fi
+
+      - name: Validate Python syntax
+        run: |
+          python -m compileall . || echo "Some files could not be compiled"
+
+      - name: Check Dockerfiles if present
+        run: |
+          if [ -f Dockerfile ]; then
+            docker build -t app-ci .
+          fi
+
+          if [ -f backend/Dockerfile ]; then
+            docker build -t backend-ci ./backend
+          fi
+
+          if [ -f frontend/Dockerfile ]; then
+            docker build -t frontend-ci ./frontend
+          fi
