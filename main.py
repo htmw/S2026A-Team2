@@ -21,6 +21,7 @@ def run_pipeline(source_type: str, source_config: dict, target_path: str = "", t
         "connection_port": connection_port,
         "raw_data": None,
         "raw_schema": {},
+        "data_quality_report": {},
         "transformation_plan": "",
         "transformation_code": "",
         "generated_code_path": "",
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     import tempfile, csv
 
     # Create a demo CSV
-    demo_path = "/tmp/demo_etl_input.csv"
+    demo_path = "demo_etl_input.csv"
     with open(demo_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["date", "symbol", "open", "close", "volume"])
         writer.writeheader()
