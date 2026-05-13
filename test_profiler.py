@@ -1,17 +1,18 @@
-"""Quick smoke test for the profiler node against the taxi dataset."""
+"""Quick smoke test for the profiler node against a CSV file."""
+import sys
 import time
 import pandas as pd
 from tools.csv_tools import infer_schema
 from agents.profiler import profiler_node, _CUDA_AVAILABLE, GPU_THRESHOLD
 
-PARQUET_PATH = "datasets/yellow_tripdata_2025-01.parquet"
+CSV_PATH = sys.argv[1] if len(sys.argv) > 1 else "datasets/yellow_tripdata_2025-01.csv"
 
 print(f"CUDA available : {_CUDA_AVAILABLE}")
 print(f"GPU threshold  : {GPU_THRESHOLD:,} rows\n")
 
-print("Loading parquet...")
+print(f"Loading {CSV_PATH}...")
 t0 = time.time()
-df = pd.read_parquet(PARQUET_PATH)
+df = pd.read_csv(CSV_PATH)
 raw_data = df.to_dict(orient="records")
 raw_schema = infer_schema(raw_data)
 print(f"Loaded {len(raw_data):,} rows in {time.time() - t0:.1f}s\n")
