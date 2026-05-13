@@ -36,7 +36,6 @@ def run_pipeline(source_type: str, source_config: dict, target_path: str = "", t
     pipeline = build_graph()
     final_state = pipeline.invoke(initial_state)
     print("Architect agent " + final_state["transformation_plan"])
-    # print(final_state["audit_log"])
 
     return final_state
 
