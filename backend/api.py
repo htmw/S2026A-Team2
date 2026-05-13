@@ -193,7 +193,7 @@ def run_pipeline_endpoint():
         source_path = body.get("source_path") or _uploaded_file_path or "datasets/coursea_data.csv"
         source_config = {"path": source_path}
 
-    elif source_type == "api":
+    elif source_type == "url_api":
         source_config = {
             "symbol": body.get("symbol"),
             "interval": body.get("interval", "Daily"),
@@ -232,7 +232,7 @@ def run_pipeline_endpoint():
     else:
         return jsonify({
             "status": "error",
-            "error": f"Unsupported source_type '{source_type}'. Use 'csv', 'api', or 'rdbms'."
+            "error": f"Unsupported source_type '{source_type}'. Use 'csv', 'url_api', or 'rdbms'."
         }), 400
 
     os.makedirs("output", exist_ok=True)
@@ -328,7 +328,7 @@ def run_pipeline_stream():
         source_path = body.get("source_path") or _uploaded_file_path or "datasets/coursea_data.csv"
         source_config = {"path": source_path}
 
-    elif source_type == "api":
+    elif source_type == "url_api":
         source_config = {
         "symbol": body.get("symbol"),
         "interval": body.get("interval", "Daily"),
@@ -500,7 +500,7 @@ def run_plan_stream():
     if source_type == "csv":
         source_path = body.get("source_path") or _uploaded_file_path or "datasets/coursea_data.csv"
         source_config = {"path": source_path}
-    elif source_type == "api":
+    elif source_type == "url_api":
         source_config = {
             "symbol": body.get("symbol"),
             "interval": body.get("interval", "Daily"),
