@@ -6,5 +6,5 @@ __pycache__/
 *.db
 *.pyo
 notes_for_dev/
-Documents
+Documents/
 .claude
