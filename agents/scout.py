@@ -3,6 +3,8 @@ import json
 from datetime import datetime
 from typing import Any
 
+import pandas as pd
+
 from tools.api_tools import fetch_alpha_vantage
 from tools.csv_tools import read_csv, infer_schema
 
@@ -41,6 +43,11 @@ def scout_node(state: dict) -> dict:
 
         elif source_type == "csv":
             raw_data = read_csv(source_config["path"])
+            raw_schema = infer_schema(raw_data)
+
+        elif source_type == "parquet":
+            df = pd.read_parquet(source_config["path"])
+            raw_data = df.to_dict(orient="records")
             raw_schema = infer_schema(raw_data)
 
         else:
