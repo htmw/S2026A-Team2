@@ -23,13 +23,10 @@ USER_PROMPT_TEMPLATE = """/no_think
 USER INSTRUCTIONS (implement these exactly):
 {user_instructions}
 
-Column names and types:
+Column names and types (for reference):
 {schema}
 
-Dataset statistics (full dataset, not a sample):
-{profile}
-
-Sample rows (for column reference only — do NOT base your plan on patterns you see here):
+Sample rows (to understand the data shape — do NOT base your plan on patterns you see here, only on the USER INSTRUCTIONS above):
 {sample}
 
 Write a numbered plan that implements only what the USER INSTRUCTIONS say."""
@@ -52,12 +49,9 @@ def architect_node(state: dict) -> dict:
     user_instructions = state.get("user_instructions", "No specific instructions provided.")
     audit_log = list(state.get("audit_log", []))
 
-    data_profile = state.get("data_profile", {})
-
     user_msg = USER_PROMPT_TEMPLATE.format(
         user_instructions=user_instructions,
         schema=json.dumps(raw_schema, indent=2),
-        profile=json.dumps(data_profile.get("columns", {}), indent=2),
         sample=json.dumps(raw_data[:10], indent=2),
     )
 

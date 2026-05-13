@@ -25,9 +25,6 @@ class ETLState(TypedDict):
     raw_data: Any             # extracted data (list of dicts)
     raw_schema: dict          # detected column types
 
-    # --- Profiler outputs ---
-    data_profile: dict        # per-column stats (null count, min/max/mean, unique count)
-
     # --- Architect outputs ---
     transformation_plan: str  # LLM-generated plan text
 

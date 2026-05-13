@@ -21,7 +21,6 @@ def run_pipeline(source_type: str, source_config: dict, target_path: str = "", t
         "connection_port": connection_port,
         "raw_data": None,
         "raw_schema": {},
-        "data_profile": {},
         "transformation_plan": "",
         "transformation_code": "",
         "generated_code_path": "",

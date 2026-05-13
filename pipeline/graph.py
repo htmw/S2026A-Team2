@@ -3,7 +3,6 @@ from langgraph.graph import StateGraph, END
 
 from pipeline.etl_state import ETLState
 from agents.scout import scout_node
-from agents.profiler import profiler_node
 from agents.architect import architect_node
 from agents.engineer import engineer_generate_node, engineer_execute_node
 from agents.loader import loader_node
@@ -15,15 +14,13 @@ def build_graph() -> StateGraph:
     graph = StateGraph(ETLState)
 
     graph.add_node("scout", scout_node)
-    graph.add_node("profiler", profiler_node)
     graph.add_node("architect", architect_node)
     graph.add_node("engineer_generate", engineer_generate_node)
     graph.add_node("engineer_execute", engineer_execute_node)
     graph.add_node("loader", loader_node)
 
     graph.set_entry_point("scout")
-    graph.add_edge("scout", "profiler")
-    graph.add_edge("profiler", "architect")
+    graph.add_edge("scout", "architect")
     graph.add_edge("architect", "engineer_generate")
     graph.add_edge("engineer_generate", "engineer_execute")
 
@@ -48,12 +45,10 @@ def build_plan_graph() -> StateGraph:
     graph = StateGraph(ETLState)
 
     graph.add_node("scout", scout_node)
-    graph.add_node("profiler", profiler_node)
     graph.add_node("architect", architect_node)
 
     graph.set_entry_point("scout")
-    graph.add_edge("scout", "profiler")
-    graph.add_edge("profiler", "architect")
+    graph.add_edge("scout", "architect")
     graph.add_edge("architect", END)
 
     return graph.compile()
