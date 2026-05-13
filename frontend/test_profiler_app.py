@@ -124,9 +124,6 @@ st.markdown(f"""
 with st.sidebar:
     st.markdown("### Upload Dataset")
     uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
-    if uploaded_csv is not None:
-        st.session_state["csv_bytes"] = uploaded_csv.read()
-        st.session_state["csv_name"] = uploaded_csv.name
 
     st.markdown("---")
     st.markdown("### About")
@@ -140,19 +137,11 @@ with st.sidebar:
     else:
         st.warning("No CUDA device — using CPU path")
 
-# ── Run button ────────────────────────────────────────────────────────────────
-run = st.button("Run Profiler", type="primary")
-
-if run:
-    csv_bytes = st.session_state.get("csv_bytes")
-    if csv_bytes is None:
-        st.warning("Please upload a CSV file first.")
-        st.stop()
-
+# ── Auto-run when file is uploaded ────────────────────────────────────────────
+if uploaded_csv is not None:
     with st.spinner("Loading dataset..."):
-        import io
         t_load = time.time()
-        df = pd.read_csv(io.BytesIO(csv_bytes))
+        df = pd.read_csv(uploaded_csv)
         raw_data = df.to_dict(orient="records")
         raw_schema = infer_schema(raw_data)
         load_time = time.time() - t_load
