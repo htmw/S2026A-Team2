@@ -125,7 +125,8 @@ with st.sidebar:
     st.markdown("### Upload Dataset")
     uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
     if uploaded_csv is not None:
-        st.session_state["uploaded_csv"] = uploaded_csv
+        st.session_state["csv_bytes"] = uploaded_csv.read()
+        st.session_state["csv_name"] = uploaded_csv.name
 
     st.markdown("---")
     st.markdown("### About")
@@ -143,14 +144,15 @@ with st.sidebar:
 run = st.button("Run Profiler", type="primary")
 
 if run:
-    csv_file = st.session_state.get("uploaded_csv")
-    if csv_file is None:
+    csv_bytes = st.session_state.get("csv_bytes")
+    if csv_bytes is None:
         st.warning("Please upload a CSV file first.")
         st.stop()
 
     with st.spinner("Loading dataset..."):
+        import io
         t_load = time.time()
-        df = pd.read_csv(csv_file)
+        df = pd.read_csv(io.BytesIO(csv_bytes))
         raw_data = df.to_dict(orient="records")
         raw_schema = infer_schema(raw_data)
         load_time = time.time() - t_load
