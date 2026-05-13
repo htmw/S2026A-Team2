@@ -1,12 +1,14 @@
 """
 DataWeaver — GPU Profiler Demo
-Standalone test app. Loads the NYC taxi parquet directly, runs the Profiler
-node, and displays results. No backend required.
+Standalone Streamlit app. Upload a CSV from your browser, the file is sent
+to this Streamlit server, processed by the CUDA profiler, and results are
+returned to your browser. No Flask backend required.
 
-Run from project root:
-    streamlit run frontend/test_profiler_app.py
+Run from project root on gaami:
+    streamlit run frontend/test_profiler_app.py --server.port 8502
 """
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import time
@@ -22,7 +24,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# ── Styles (lifted from app_t3) ───────────────────────────────────────────────
+# ── Styles ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
@@ -52,33 +54,17 @@ st.markdown("""
     .dw-hero h1 { margin: 0; font-size: 1.35rem; font-weight: 700; color: #ffffff; }
     .dw-hero p  { margin: 0.45rem 0 0 0; font-size: 0.92rem; color: #b0a8bf; }
 
-    .dw-badge {
-        display: inline-block; background: rgba(168,85,247,0.16); color: #e9d5ff;
-        padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 600;
-        margin-bottom: 0.45rem; border: 1px solid rgba(45,27,78,0.65);
-    }
-    .dw-badge-gpu {
-        display: inline-block; background: rgba(34,197,94,0.15); color: #86efac;
-        padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700;
-        border: 1px solid rgba(34,197,94,0.4); letter-spacing: 0.05em;
-    }
-    .dw-badge-cpu {
-        display: inline-block; background: rgba(251,191,36,0.15); color: #fcd34d;
-        padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700;
-        border: 1px solid rgba(251,191,36,0.4); letter-spacing: 0.05em;
-    }
+    .dw-badge     { display: inline-block; background: rgba(168,85,247,0.16); color: #e9d5ff;
+                    padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 600;
+                    margin-bottom: 0.45rem; border: 1px solid rgba(45,27,78,0.65); }
+    .dw-badge-gpu { display: inline-block; background: rgba(34,197,94,0.15); color: #86efac;
+                    padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700;
+                    border: 1px solid rgba(34,197,94,0.4); letter-spacing: 0.05em; }
+    .dw-badge-cpu { display: inline-block; background: rgba(251,191,36,0.15); color: #fcd34d;
+                    padding: 0.2rem 0.6rem; border-radius: 8px; font-size: 0.72rem; font-weight: 700;
+                    border: 1px solid rgba(251,191,36,0.4); letter-spacing: 0.05em; }
 
-    .dw-card {
-        background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
-        border: 1px solid rgba(45,27,78,0.82); border-radius: 14px;
-        padding: 0.85rem 1.05rem; margin: 0.75rem 0;
-        box-shadow: 0 0 0 1px rgba(255,255,255,0.035) inset, 0 12px 36px rgba(0,0,0,0.42);
-        color: #d4cee0;
-    }
-
-    .dw-stat-grid {
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; margin-bottom: 1rem;
-    }
+    .dw-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7rem; margin-bottom: 1rem; }
     .dw-stat {
         background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
         border: 1px solid rgba(45,27,78,0.75); border-radius: 14px;
@@ -89,6 +75,12 @@ st.markdown("""
     .dw-stat-lbl { font-size: 0.7rem; color: #b0a8bf; font-weight: 600;
                    letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.2rem; }
 
+    .dw-card {
+        background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
+        border: 1px solid rgba(45,27,78,0.82); border-radius: 14px;
+        padding: 0.85rem 1.05rem; margin: 0.75rem 0;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.035) inset, 0 12px 36px rgba(0,0,0,0.42);
+    }
     .dw-col-row {
         display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.6rem;
         border-bottom: 1px solid rgba(45,27,78,0.45); font-size: 0.83rem;
@@ -100,20 +92,13 @@ st.markdown("""
     .dw-null-hi  { color: #f87171; font-weight: 600; }
     .dw-null-ok  { color: #86efac; }
 
-    [data-testid="stMetric"] {
-        border: 1px solid rgba(45,27,78,0.75); border-radius: 14px;
-        background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
-        padding: 0.4rem 0.6rem;
-    }
     .stButton > button[kind="primary"] {
         background: linear-gradient(180deg, #a855f7, #7c3aed);
         border: none; font-weight: 600; border-radius: 12px;
         min-height: 2.35rem; color: #ffffff;
         box-shadow: 0 4px 18px rgba(168,85,247,0.35);
     }
-    .stButton > button[kind="primary"]:hover {
-        background: linear-gradient(180deg, #c084fc, #9333ea);
-    }
+    .stButton > button[kind="primary"]:hover { background: linear-gradient(180deg, #c084fc, #9333ea); }
     .main .stMarkdown p, .main .stMarkdown li { color: #d4cee0 !important; }
     .main .stMarkdown h1, .main .stMarkdown h2, .main .stMarkdown h3 { color: #f8f7fc !important; }
 </style>
@@ -135,60 +120,43 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Dataset selector ──────────────────────────────────────────────────────────
-DEFAULT_PARQUET = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "datasets", "yellow_tripdata_2025-01.parquet")
-)
-
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### Dataset")
-    dataset_choice = st.radio(
-        "Source",
-        ["NYC Taxi (parquet — Jan 2025)", "Upload CSV"],
-        label_visibility="collapsed",
-    )
-    uploaded_csv = None
-    if dataset_choice == "Upload CSV":
-        uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
+    st.markdown("### Upload Dataset")
+    uploaded_csv = st.file_uploader("Upload CSV", type=["csv"])
+    if uploaded_csv is not None:
+        st.session_state["uploaded_csv"] = uploaded_csv
 
     st.markdown("---")
     st.markdown("### About")
     st.markdown(
-        "Profiler runs **CUDA kernels** when row count ≥ "
-        f"`{GPU_THRESHOLD:,}` and a GPU is available. "
-        "Otherwise falls back to NumPy."
+        "Upload a CSV from your browser. The file is sent to this server "
+        "and processed by the profiler. CUDA kernels fire automatically "
+        f"when row count ≥ `{GPU_THRESHOLD:,}` and a GPU is available."
     )
     if _CUDA_AVAILABLE:
         st.success("CUDA detected — GPU path active")
     else:
         st.warning("No CUDA device — using CPU path")
 
-# ── Load & run ────────────────────────────────────────────────────────────────
-run = st.button("Run Profiler", type="primary", use_container_width=False)
+# ── Run button ────────────────────────────────────────────────────────────────
+run = st.button("Run Profiler", type="primary")
 
 if run:
-    # Load data
+    csv_file = st.session_state.get("uploaded_csv")
+    if csv_file is None:
+        st.warning("Please upload a CSV file first.")
+        st.stop()
+
     with st.spinner("Loading dataset..."):
         t_load = time.time()
-        if dataset_choice == "NYC Taxi (parquet — Jan 2025)":
-            if not os.path.exists(DEFAULT_PARQUET):
-                st.error(f"Parquet file not found at `{DEFAULT_PARQUET}`. "
-                         "Make sure the file is in the `datasets/` folder.")
-                st.stop()
-            df = pd.read_parquet(DEFAULT_PARQUET)
-        else:
-            if uploaded_csv is None:
-                st.warning("Please upload a CSV file first.")
-                st.stop()
-            df = pd.read_csv(uploaded_csv)
-
+        df = pd.read_csv(csv_file)
         raw_data = df.to_dict(orient="records")
         raw_schema = infer_schema(raw_data)
         load_time = time.time() - t_load
 
     st.success(f"Loaded **{len(raw_data):,}** rows in `{load_time:.1f}s`")
 
-    # Run profiler
     with st.spinner("Running profiler..."):
         state = {"raw_data": raw_data, "raw_schema": raw_schema, "audit_log": []}
         t_profile = time.time()
@@ -196,16 +164,14 @@ if run:
         profile_time = time.time() - t_profile
 
     profile = result["data_profile"]
-    backend = profile["backend"].upper()
     n_rows = profile["row_count"]
     n_cols = len(profile["columns"])
-
-    # ── Summary stats ─────────────────────────────────────────────────────────
     backend_badge = (
         '<span class="dw-badge-gpu">CUDA GPU</span>'
         if profile["backend"] == "cuda" else
         '<span class="dw-badge-cpu">CPU</span>'
     )
+
     st.markdown(f"""
     <div class="dw-stat-grid">
         <div class="dw-stat">
@@ -227,7 +193,6 @@ if run:
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Per-column table ──────────────────────────────────────────────────────
     st.markdown("#### Column Statistics")
     st.markdown('<div class="dw-card">', unsafe_allow_html=True)
 
@@ -239,9 +204,7 @@ if run:
         null_cls = "dw-null-hi" if null_pct > 5 else "dw-null-ok"
 
         if dtype in ("int", "float"):
-            mn = stats.get("min")
-            mx = stats.get("max")
-            mean = stats.get("mean")
+            mn, mx, mean = stats.get("min"), stats.get("max"), stats.get("mean")
             detail = (
                 f"min <strong>{mn:.2f}</strong> &nbsp;·&nbsp; "
                 f"max <strong>{mx:.2f}</strong> &nbsp;·&nbsp; "
@@ -256,15 +219,12 @@ if run:
             <span class="dw-col-name">{col}</span>
             <span class="dw-col-type">{dtype}</span>
             <span class="dw-col-val">{detail}</span>
-            <span class="dw-col-val {null_cls}">
-                {null_count:,} nulls ({null_pct:.1f}%)
-            </span>
+            <span class="dw-col-val {null_cls}">{null_count:,} nulls ({null_pct:.1f}%)</span>
         </div>
         """)
 
     st.markdown("".join(rows_html), unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── Audit log ─────────────────────────────────────────────────────────────
     with st.expander("Audit log"):
         st.json(result["audit_log"])
