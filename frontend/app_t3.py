@@ -1,3 +1,4 @@
+import base64
 import html
 import io
 import os
@@ -24,6 +25,14 @@ def _svg_data_uri(svg: str) -> str:
 
 # Tab favicon (PNG — avoid emoji favicon in browser chrome)
 _DW_FAVICON = Path(__file__).resolve().parent / "dw_favicon.png"
+# Full-page background for workspace (not used on marketing landing — see dw_landing.py)
+_WORKSPACE_BG_PNG = Path(__file__).resolve().parent / "assets" / "dw_workspace_bg.png"
+
+
+def _png_data_uri(path: Path) -> Optional[str]:
+    if not path.is_file():
+        return None
+    return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
 
 # Sidebar icon assets (account / live support) — minimal line icons, brand purple
 _DW_SVG_ACCOUNT_ICON = (
@@ -56,6 +65,37 @@ st.set_page_config(
 # Theme / style
 # -----------------------------------------------------------------------------
 def _inject_styles() -> None:
+    _bg_uri = _png_data_uri(_WORKSPACE_BG_PNG)
+    if _bg_uri:
+        _st_app_bg = (
+            f"""
+            [data-testid="stAppViewContainer"] {{
+                background-color: #040a12;
+                background-image:
+                    linear-gradient(
+                        198deg,
+                        rgba(2, 5, 12, 0.88) 0%,
+                        rgba(4, 12, 22, 0.65) 42%,
+                        rgba(3, 6, 11, 0.82) 100%
+                    ),
+                    url("{_bg_uri}");
+                background-size: auto, cover;
+                background-position: center, center;
+                background-repeat: no-repeat, no-repeat;
+                background-attachment: fixed, fixed;
+            }}
+            """
+        )
+    else:
+        _st_app_bg = """
+            [data-testid="stAppViewContainer"] {
+                background-color: #030507;
+                background-image:
+                    radial-gradient(ellipse 96% 70% at 50% -15%, rgba(6, 182, 212, 0.26), transparent 56%),
+                    linear-gradient(188deg, #060b0e 0%, #030507 52%, #020304 100%);
+                background-attachment: fixed;
+            }
+            """
     _dw_css = (
         """
         <style>
@@ -64,73 +104,64 @@ def _inject_styles() -> None:
             html, body, [class*="css"] { font-family: 'DM Sans', system-ui, sans-serif; }
             /* Extra top padding clears Streamlit header so first content (e.g. dw-topbar) isn’t clipped */
             .block-container { padding-top: clamp(2.85rem, 5.5vw, 4rem); padding-bottom: 1.8rem; max-width: 1220px; }
-            [data-testid="stAppViewContainer"] {
-                background-color: #0b0114;
-                background-image:
-                    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-                    radial-gradient(ellipse 95% 70% at 50% -12%, rgba(124, 58, 237, 0.26), transparent 56%),
-                    radial-gradient(ellipse 70% 55% at 100% 28%, rgba(168, 85, 247, 0.11), transparent 50%),
-                    radial-gradient(ellipse 60% 50% at 0% 70%, rgba(88, 28, 135, 0.16), transparent 48%),
-                    linear-gradient(188deg, #160d22 0%, #0b0114 45%, #07030c 100%);
-                background-size: 52px 52px, 52px 52px, auto, auto, auto, auto;
-                background-attachment: fixed;
-            }
+            """
+        + _st_app_bg
+        + """
             .main .block-container { background: transparent; }
 
             .dw-hero {
                 background:
-                    radial-gradient(ellipse 110% 90% at 50% 0%, rgba(168, 85, 247, 0.14), transparent 58%),
-                    linear-gradient(148deg, #22182e 0%, #1a1224 50%, #17101f 100%);
-                color: #d4cee0;
+                    radial-gradient(ellipse 110% 90% at 50% 0%, rgba(6, 182, 212, 0.12), transparent 58%),
+                    linear-gradient(148deg, #081216 0%, #050a0c 52%, #040608 100%);
+                color: #cffafe;
                 padding: 1.25rem 1.4rem;
-                border-radius: 16px;
+                border-radius: 0;
                 margin-bottom: 1.1rem;
-                border: 1px solid rgba(45, 27, 78, 0.85);
+                border: 1px solid rgba(34, 211, 238, 0.52);
                 box-shadow:
-                    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
-                    0 16px 48px rgba(0, 0, 0, 0.48),
-                    0 0 64px -16px rgba(168, 85, 247, 0.18);
+                    0 0 0 1px rgba(6, 182, 212, 0.15) inset,
+                    0 16px 48px rgba(0, 0, 0, 0.55),
+                    0 0 40px rgba(6, 182, 212, 0.12);
             }
-            .dw-hero h1 { margin: 0; font-size: 1.35rem; font-weight: 700; color: #ffffff; }
-            .dw-hero p { margin: 0.45rem 0 0 0; font-size: 0.92rem; color: #b0a8bf; }
+            .dw-hero h1 { margin: 0; font-size: 1.35rem; font-weight: 700; color: #ecfeff; }
+            .dw-hero p { margin: 0.45rem 0 0 0; font-size: 0.92rem; color: #9ddcf0; }
             .dw-badge {
                 display: inline-block;
-                background: rgba(168, 85, 247, 0.16);
-                color: #e9d5ff;
+                background: rgba(6, 182, 212, 0.12);
+                color: #cffafe;
                 padding: 0.2rem 0.6rem;
-                border-radius: 8px;
+                border-radius: 0;
                 font-size: 0.72rem;
                 font-weight: 600;
                 margin-bottom: 0.45rem;
-                border: 1px solid rgba(45, 27, 78, 0.65);
-                box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.12) inset;
+                border: 1px solid rgba(34, 211, 238, 0.45);
+                box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.12) inset;
             }
 
             .dw-card {
-                background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
-                border: 1px solid rgba(45, 27, 78, 0.82);
-                border-radius: 14px;
+                background: linear-gradient(180deg, #081216 0%, #05090b 100%);
+                border: 1px solid rgba(34, 211, 238, 0.38);
+                border-radius: 0;
                 padding: 0.85rem 1.05rem;
                 margin: 0.75rem 0;
                 box-shadow:
-                    0 0 0 1px rgba(255, 255, 255, 0.035) inset,
-                    0 12px 36px rgba(0, 0, 0, 0.42);
-                color: #d4cee0;
+                    0 0 0 1px rgba(6, 182, 212, 0.1) inset,
+                    0 12px 36px rgba(0, 0, 0, 0.5);
+                color: #e0fbff;
             }
             .dw-topbar {
                 width: 100%;
-                background: linear-gradient(92deg, #1a1224 0%, rgba(88, 28, 135, 0.62) 40%, rgba(168, 85, 247, 0.48) 100%);
-                border-radius: 12px;
+                background: linear-gradient(92deg, #071014 0%, rgba(8, 47, 58, 0.85) 45%, rgba(6, 182, 212, 0.22) 100%);
+                border-radius: 0;
                 padding: 0.45rem 1rem;
                 margin: 0.35rem 0 0.85rem 0;
                 position: sticky;
                 top: 3.5rem;
                 z-index: 999;
-                border: 1px solid rgba(45, 27, 78, 0.65);
+                border: 1px solid rgba(34, 211, 238, 0.4);
                 box-shadow:
-                    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-                    0 10px 36px rgba(0, 0, 0, 0.42);
+                    0 0 0 1px rgba(6, 182, 212, 0.12) inset,
+                    0 10px 36px rgba(0, 0, 0, 0.45);
             }
             .dw-topbar-text {
                 color: #ffffff;
@@ -146,27 +177,27 @@ def _inject_styles() -> None:
                 margin: 0.35rem 0 0.8rem 0;
             }
             .dw-feature {
-                background: linear-gradient(175deg, #22182e 0%, #1a1224 100%);
-                border: 1px solid rgba(45, 27, 78, 0.75);
-                border-radius: 14px;
+                background: linear-gradient(175deg, #081216 0%, #060a0c 100%);
+                border: 1px solid rgba(34, 211, 238, 0.32);
+                border-radius: 0;
                 padding: 0.75rem 0.85rem;
                 box-shadow:
-                    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-                    0 8px 28px rgba(0, 0, 0, 0.38);
+                    0 0 0 1px rgba(6, 182, 212, 0.08) inset,
+                    0 8px 28px rgba(0, 0, 0, 0.45);
             }
-            .dw-feature h4 { margin: 0; font-size: 0.87rem; color: #f8f7fc; }
-            .dw-feature p { margin: 0.25rem 0 0 0; font-size: 0.78rem; color: #b0a8bf; line-height: 1.35; }
+            .dw-feature h4 { margin: 0; font-size: 0.87rem; color: #ecfeff; }
+            .dw-feature p { margin: 0.25rem 0 0 0; font-size: 0.78rem; color: #9ddcf0; line-height: 1.35; }
             .dw-upload-panel {
-                background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
-                border: 1px solid rgba(45, 27, 78, 0.8);
-                border-radius: 14px;
+                background: linear-gradient(180deg, #081216 0%, #05090b 100%);
+                border: 1px solid rgba(34, 211, 238, 0.38);
+                border-radius: 0;
                 padding: 0.85rem 0.95rem;
                 margin-top: 0.2rem;
-                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.035) inset, 0 10px 32px rgba(0, 0, 0, 0.35);
+                box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.1) inset, 0 10px 32px rgba(0, 0, 0, 0.45);
             }
 
             [data-testid="stSidebar"] {
-                background: linear-gradient(180deg, #0c0612 0%, #140a1c 42%, #100818 100%);
+                background: linear-gradient(180deg, #020608 0%, #071014 52%, #040608 100%);
             }
             /* Fill sidebar height; pin live-support row to the bottom */
             [data-testid="stSidebar"] .block-container {
@@ -189,45 +220,47 @@ def _inject_styles() -> None:
             [data-testid="stSidebar"] h1,
             [data-testid="stSidebar"] h2,
             [data-testid="stSidebar"] h3 {
-                color: #d8b4fe !important;
+                color: #67e8f9 !important;
             }
             [data-testid="stSidebar"] button[kind="secondary"] {
-                border-color: rgba(45, 27, 78, 0.95) !important;
-                background: rgba(26, 18, 36, 0.88) !important;
-                color: #d4cee0 !important;
+                border-color: rgba(34, 211, 238, 0.45) !important;
+                background: rgba(5, 10, 14, 0.92) !important;
+                color: #ccfbf1 !important;
+                border-radius: 0 !important;
             }
             [data-testid="stSidebar"] button[kind="secondary"]:hover {
-                border-color: rgba(168, 85, 247, 0.55) !important;
-                background: rgba(88, 28, 135, 0.32) !important;
+                border-color: rgba(34, 211, 238, 0.72) !important;
+                background: rgba(8, 47, 58, 0.45) !important;
             }
             [data-testid="stSidebar"] button[kind="primary"] {
-                background: linear-gradient(180deg, #9333ea, #7c3aed) !important;
+                background: linear-gradient(180deg, #0891b2, #06b6d4) !important;
                 border: none !important;
-                color: #faf5ff !important;
+                color: #ecfeff !important;
+                border-radius: 0 !important;
             }
 
-            .stButton > button[kind="primary"] {
-                background: linear-gradient(180deg, #a855f7, #7c3aed);
-                border: none;
-                font-weight: 600;
-                border-radius: 12px;
-                min-height: 2.35rem;
-                color: #ffffff;
-                box-shadow: 0 4px 18px rgba(168, 85, 247, 0.35);
+            section[data-testid="stMain"] .stButton > button[kind="primary"] {
+                background: linear-gradient(180deg, #06b6d4, #0891b2) !important;
+                border: 1px solid rgba(165, 243, 252, 0.45) !important;
+                border-radius: 0 !important;
+                font-weight: 600 !important;
+                min-height: 2.35rem !important;
+                color: #ecfeff !important;
+                box-shadow: 0 0 28px rgba(6, 182, 212, 0.32) !important;
             }
-            .stButton > button[kind="primary"]:hover {
-                background: linear-gradient(180deg, #c084fc, #9333ea);
+            section[data-testid="stMain"] .stButton > button[kind="primary"]:hover {
+                filter: brightness(1.08) !important;
             }
-            .stButton > button[kind="secondary"] {
-                border-radius: 12px;
-                min-height: 2.35rem;
-                border: 1px solid rgba(45, 27, 78, 0.9);
-                background: rgba(26, 18, 36, 0.55);
-                color: #e8e4ef;
+            section[data-testid="stMain"] .stButton > button[kind="secondary"] {
+                border-radius: 0 !important;
+                min-height: 2.35rem !important;
+                border: 1px solid rgba(34, 211, 238, 0.38) !important;
+                background: rgba(6, 10, 12, 0.75) !important;
+                color: #ccfbf1 !important;
             }
-            .stButton > button[kind="secondary"]:hover {
-                border-color: #a855f7 !important;
-                background: rgba(88, 28, 135, 0.28) !important;
+            section[data-testid="stMain"] .stButton > button[kind="secondary"]:hover {
+                border-color: rgba(34, 211, 238, 0.65) !important;
+                background: rgba(8, 47, 58, 0.35) !important;
             }
             .st-key-dw_regenerate_code_btn button {
                 background: #dcfce7 !important;
@@ -251,77 +284,78 @@ def _inject_styles() -> None:
                 border-color: #f87171 !important;
                 color: #7f1d1d !important;
             }
-            .stButton > button:focus {
+            .stButton > button:focus-visible {
                 outline: none !important;
-                box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.35) !important;
+                box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.75) !important;
             }
 
             /* File uploader — visible dropzone frame (dark UI) */
             [data-testid="stFileUploader"] section {
-                border-radius: 12px;
+                border-radius: 0 !important;
                 border: none;
                 background: transparent;
             }
             [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
-                border: 2px dashed rgba(192, 132, 252, 0.7) !important;
-                border-radius: 12px !important;
-                background: rgba(20, 12, 28, 0.92) !important;
+                border: 2px dashed rgba(34, 211, 238, 0.55) !important;
+                border-radius: 0 !important;
+                background: rgba(5, 10, 14, 0.95) !important;
                 padding: 1rem 1.15rem !important;
                 min-height: 7.5rem !important;
                 box-shadow:
-                    0 0 0 1px rgba(168, 85, 247, 0.22) inset,
-                    0 6px 28px rgba(0, 0, 0, 0.35) !important;
+                    0 0 0 1px rgba(6, 182, 212, 0.22) inset,
+                    0 6px 28px rgba(0, 0, 0, 0.45) !important;
             }
             [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"]:hover {
-                border-color: rgba(216, 180, 254, 0.9) !important;
-                background: rgba(28, 18, 38, 0.95) !important;
+                border-color: rgba(103, 232, 249, 0.85) !important;
+                background: rgba(8, 24, 32, 0.95) !important;
             }
             [data-testid="stMetric"] {
-                border: 1px solid rgba(45, 27, 78, 0.75);
-                border-radius: 14px;
-                background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%);
+                border: 1px solid rgba(34, 211, 238, 0.38);
+                border-radius: 0 !important;
+                background: linear-gradient(180deg, #081216 0%, #05090b 100%);
                 padding: 0.4rem 0.6rem;
                 box-shadow:
-                    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
-                    0 8px 24px rgba(0, 0, 0, 0.38);
+                    0 0 0 1px rgba(6, 182, 212, 0.08) inset,
+                    0 8px 24px rgba(0, 0, 0, 0.45);
             }
 
             [data-testid="stDataFrame"] {
-                border: 1px solid rgba(45, 27, 78, 0.65);
-                border-radius: 14px;
+                border: 1px solid rgba(34, 211, 238, 0.35);
+                border-radius: 0 !important;
                 overflow: hidden;
-                box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+                box-shadow: 0 4px 18px rgba(0, 0, 0, 0.42);
             }
 
             [data-baseweb="tab-list"] {
                 gap: 0.2rem;
-                border-bottom: 1px solid rgba(168, 85, 247, 0.25);
+                border-bottom: 1px solid rgba(34, 211, 238, 0.35);
                 margin-bottom: 0.4rem;
             }
             [data-baseweb="tab"] {
                 height: 2rem;
-                border-radius: 8px 8px 0 0;
+                border-radius: 0 !important;
                 padding: 0 0.85rem;
                 font-weight: 600;
-                color: #b0a8bf;
+                color: #7ddaea;
             }
             [aria-selected="true"][data-baseweb="tab"] {
-                color: #f5f3ff !important;
-                background: rgba(168, 85, 247, 0.2);
+                color: #ecfeff !important;
+                background: rgba(6, 182, 212, 0.22);
+                box-shadow: 0 -1px 0 0 rgba(34, 211, 238, 0.6) inset;
             }
 
             [data-testid="stAlert"] {
-                border-radius: 10px;
+                border-radius: 0 !important;
                 border-width: 1px;
             }
 
             .stProgress > div > div > div > div {
-                background: linear-gradient(90deg, #7c3aed, #a855f7);
+                background: linear-gradient(90deg, #0891b2, #22d3ee);
             }
 
             /* Fix: metric text colors */
-            [data-testid="stMetricValue"] { color: #f8f7fc !important; }
-            [data-testid="stMetricLabel"] { color: #b0a8bf !important; }
+            [data-testid="stMetricValue"] { color: #ecfeff !important; }
+            [data-testid="stMetricLabel"] { color: #7ddaea !important; }
 
             /* Fix: text input text color in main area */
             .stTextInput input { color: #1e293b !important; }
@@ -342,7 +376,7 @@ def _inject_styles() -> None:
             }
 
             /* Fix: caption text */
-            .stCaption p, [data-testid="stCaptionContainer"] p { color: #b0a8bf !important; }
+            .stCaption p, [data-testid="stCaptionContainer"] p { color: #88d4ea !important; }
 
             /* Fix: expander summary/header text */
             details > summary { color: #e2e8f0 !important; }
@@ -524,10 +558,12 @@ def _inject_styles() -> None:
             [data-testid="stDialogContent"]:has(#dw-login-anchor) {
                 width: min(440px, 94vw) !important;
                 max-height: min(640px, 90vh) !important;
-                background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%) !important;
-                border: 1px solid rgba(45, 27, 78, 0.95) !important;
-                color: #f8f7fc !important;
+                background: linear-gradient(180deg, #081216 0%, #040608 100%) !important;
+                border: 1px solid rgba(34, 211, 238, 0.45) !important;
+                border-radius: 0 !important;
+                color: #ecfeff !important;
                 padding: 1rem 1.1rem 1.1rem 1.1rem !important;
+                box-shadow: 0 0 40px rgba(6, 182, 212, 0.12) !important;
             }
             [data-testid="stDialogContent"]:has(#dw-reg-anchor) .stMarkdown p,
             [data-testid="stDialogContent"]:has(#dw-login-anchor) .stMarkdown p,
@@ -544,7 +580,7 @@ def _inject_styles() -> None:
                 background: #2a2538 !important;
                 border: 1px solid #3d3554 !important;
                 color: #f8fafc !important;
-                border-radius: 10px !important;
+                border-radius: 0 !important;
             }
             [data-testid="stDialogContent"]:has(#dw-reg-anchor) .stTextInput input:focus,
             [data-testid="stDialogContent"]:has(#dw-login-anchor) .stTextInput input:focus {
@@ -557,20 +593,20 @@ def _inject_styles() -> None:
             }
             [data-testid="stDialogContent"]:has(#dw-reg-anchor) button[kind="primary"],
             [data-testid="stDialogContent"]:has(#dw-login-anchor) button[kind="primary"] {
-                background: #6d58b7 !important;
-                border: none !important;
-                color: #ffffff !important;
-                border-radius: 12px !important;
+                background: linear-gradient(180deg, #0891b2, #06b6d4) !important;
+                border: 1px solid rgba(165, 243, 252, 0.45) !important;
+                color: #ecfeff !important;
+                border-radius: 0 !important;
                 font-weight: 600 !important;
                 min-height: 2.65rem !important;
             }
             [data-testid="stDialogContent"]:has(#dw-reg-anchor) button[kind="primary"]:hover,
             [data-testid="stDialogContent"]:has(#dw-login-anchor) button[kind="primary"]:hover {
-                background: #7c6bc4 !important;
+                filter: brightness(1.06) !important;
             }
             [data-testid="stDialogContent"]:has(#dw-reg-anchor) button[kind="secondary"],
             [data-testid="stDialogContent"]:has(#dw-login-anchor) button[kind="secondary"] {
-                border-radius: 10px !important;
+                border-radius: 0 !important;
                 border: 1px solid rgba(255, 255, 255, 0.32) !important;
                 background: transparent !important;
                 color: #f1f5f9 !important;
@@ -591,14 +627,14 @@ def _inject_styles() -> None:
             }
 
             /* Fix: selectbox, radio, checkbox label text in main area */
-            .main .stRadio label, .main .stCheckbox label, .main .stSelectbox label { color: #c9c2d4 !important; }
-            .main .stRadio p, .main .stCheckbox p, .main .stSelectbox p { color: #c9c2d4 !important; }
-            .main .stMarkdown p, .main .stMarkdown li { color: #d4cee0 !important; }
-            .main .stMarkdown h1, .main .stMarkdown h2, .main .stMarkdown h3 { color: #f8f7fc !important; }
+            .main .stRadio label, .main .stCheckbox label, .main .stSelectbox label { color: #9ddcf0 !important; }
+            .main .stRadio p, .main .stCheckbox p, .main .stSelectbox p { color: #9ddcf0 !important; }
+            .main .stMarkdown p, .main .stMarkdown li { color: #cffafe !important; }
+            .main .stMarkdown h1, .main .stMarkdown h2, .main .stMarkdown h3 { color: #ecfeff !important; }
 
             /* Fix: file uploader drag-and-drop label text */
             [data-testid="stFileUploaderDropzone"] span,
-            [data-testid="stFileUploaderDropzone"] p { color: #b0a8bf !important; }
+            [data-testid="stFileUploaderDropzone"] p { color: #7ddaea !important; }
 
             /* Hide duplicate native Browse — file picking is via Add files → Browse files */
             [data-testid="stFileUploader"] button[kind="secondary"] {
@@ -607,12 +643,12 @@ def _inject_styles() -> None:
 
             /* Schema inference — wireframe board (Mapper) */
             .dw-wf-board {
-                border: 1px dashed rgba(45, 27, 78, 0.85);
-                border-radius: 14px;
-                background: linear-gradient(175deg, #22182e 0%, #1a1224 55%, #17101f 100%);
+                border: 1px dashed rgba(34, 211, 238, 0.45);
+                border-radius: 0 !important;
+                background: linear-gradient(175deg, #081216 0%, #05090b 55%, #040608 100%);
                 padding: 16px 18px 20px;
                 margin: 0 0 14px 0;
-                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset, 0 10px 32px rgba(0, 0, 0, 0.35);
+                box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.1) inset, 0 10px 32px rgba(0, 0, 0, 0.45);
             }
             .dw-wf-board-title {
                 font-size: 0.68rem;
@@ -628,11 +664,11 @@ def _inject_styles() -> None:
                 gap: 10px;
             }
             .dw-wf-metric-cell {
-                border: 1px solid rgba(45, 27, 78, 0.65);
-                background: linear-gradient(180deg, #1c1422 0%, #17101f 100%);
+                border: 1px solid rgba(34, 211, 238, 0.32);
+                background: linear-gradient(180deg, #060f14 0%, #040708 100%);
                 padding: 10px 8px;
                 text-align: center;
-                border-radius: 10px;
+                border-radius: 0 !important;
             }
             .dw-wf-num { display: block; font-size: 1.35rem; font-weight: 700; color: #f8f7fc; line-height: 1.2; }
             .dw-wf-lbl { display: block; font-size: 0.62rem; letter-spacing: 0.1em; color: #b0a8bf; margin-top: 4px; font-weight: 600; }
@@ -644,18 +680,18 @@ def _inject_styles() -> None:
                 text-transform: uppercase;
                 margin: 0 0 10px 0;
                 padding-bottom: 6px;
-                border-bottom: 1px dashed rgba(168, 85, 247, 0.25);
+                border-bottom: 1px dashed rgba(34, 211, 238, 0.35);
             }
-            .dw-wf-lane-h.e { color: #c084fc; }
+            .dw-wf-lane-h.e { color: #67e8f9; }
             .dw-wf-lane-h.t { color: #b45309; }
             .dw-wf-lane-h.l { color: #15803d; }
             .dw-wf-card {
-                border: 1px solid rgba(45, 27, 78, 0.75);
-                background: #1a1224;
-                border-radius: 10px;
+                border: 1px solid rgba(34, 211, 238, 0.32);
+                background: #05090b;
+                border-radius: 0 !important;
                 padding: 10px 12px 12px;
                 margin-bottom: 10px;
-                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+                box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.08) inset;
             }
             .dw-wf-card-title { font-weight: 700; font-size: 0.88rem; color: #f8f7fc; margin-bottom: 4px; }
             .dw-wf-meta { font-size: 0.76rem; color: #b0a8bf; margin-bottom: 8px; }
@@ -684,22 +720,142 @@ def _inject_styles() -> None:
             .dw-wf-ul { margin: 6px 0 0 0; padding-left: 16px; font-size: 0.76rem; color: #cbd5e1; line-height: 1.5; }
             .dw-wf-note {
                 font-size: 0.72rem;
-                color: #b0a8bf;
-                border: 1px solid rgba(45, 27, 78, 0.65);
-                background: linear-gradient(180deg, #1c1422 0%, #17101f 100%);
+                color: #9ddcf0;
+                border: 1px solid rgba(34, 211, 238, 0.28);
+                background: linear-gradient(180deg, #060f14 0%, #040608 100%);
                 padding: 8px 10px;
-                border-radius: 10px;
+                border-radius: 0 !important;
                 margin-top: 8px;
             }
             /* ERD graphviz — wireframe frame (solid outer border) */
             [data-testid="stGraphvizChart"] {
-                border: 1px solid rgba(45, 27, 78, 0.85) !important;
-                border-radius: 14px !important;
+                border: 1px solid rgba(34, 211, 238, 0.42) !important;
+                border-radius: 0 !important;
                 padding: 12px !important;
                 background: repeating-linear-gradient(
-                    0deg, #1a1224, #1a1224 10px, #1f1528 11px
+                    0deg, #05090b, #05090b 10px, #081216 11px
                 ) !important;
-                box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset !important;
+                box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.1) inset !important;
+            }
+
+            /* Transform — clickable workflow nav (keyed container #streamlit-key-dw_tf_workflow_nav) */
+            div[data-testid="stVerticalBlock"][id="streamlit-key-dw_tf_workflow_nav"],
+            div[data-testid="stVerticalBlock"][id^="streamlit-key-dw_tf_workflow_nav"] {
+                margin-bottom: 0.35rem;
+            }
+            div[data-testid="stVerticalBlock"][id="streamlit-key-dw_tf_workflow_nav"] button[kind="secondary"],
+            div[data-testid="stVerticalBlock"][id^="streamlit-key-dw_tf_workflow_nav"] button[kind="secondary"] {
+                background: #ffffff !important;
+                color: #94a3b8 !important;
+                border: 1px solid rgba(226, 232, 240, 0.95) !important;
+                border-radius: 0 !important;
+                font-weight: 600 !important;
+                font-size: 0.78rem !important;
+                min-height: 2.45rem;
+                box-shadow: none !important;
+            }
+            div[data-testid="stVerticalBlock"][id="streamlit-key-dw_tf_workflow_nav"] button[kind="secondary"]:hover,
+            div[data-testid="stVerticalBlock"][id^="streamlit-key-dw_tf_workflow_nav"] button[kind="secondary"]:hover {
+                background: #f8fafc !important;
+                color: #64748b !important;
+            }
+            div[data-testid="stVerticalBlock"][id="streamlit-key-dw_tf_workflow_nav"] button[kind="primary"],
+            div[data-testid="stVerticalBlock"][id^="streamlit-key-dw_tf_workflow_nav"] button[kind="primary"] {
+                background: #dbeafe !important;
+                color: #0369a1 !important;
+                border: 1px solid #7dd3fc !important;
+                border-radius: 0 !important;
+                font-weight: 600 !important;
+                font-size: 0.78rem !important;
+                min-height: 2.45rem;
+                box-shadow: 0 1px 4px rgba(56, 189, 248, 0.22) !important;
+            }
+            div[data-testid="stVerticalBlock"][id="streamlit-key-dw_tf_workflow_nav"] button[kind="primary"]:hover,
+            div[data-testid="stVerticalBlock"][id^="streamlit-key-dw_tf_workflow_nav"] button[kind="primary"]:hover {
+                filter: brightness(0.97);
+            }
+            /* Fallback if Streamlit nests id differently */
+            [id^="streamlit-key-dw_tf_workflow_nav"] button[kind="secondary"] {
+                background: #ffffff !important;
+                color: #94a3b8 !important;
+                border: 1px solid rgba(226, 232, 240, 0.95) !important;
+                border-radius: 0 !important;
+                font-weight: 600 !important;
+                font-size: 0.78rem !important;
+                min-height: 2.45rem;
+                box-shadow: none !important;
+            }
+            [id^="streamlit-key-dw_tf_workflow_nav"] button[kind="primary"] {
+                background: #dbeafe !important;
+                color: #0369a1 !important;
+                border: 1px solid #7dd3fc !important;
+                border-radius: 0 !important;
+                font-weight: 600 !important;
+                font-size: 0.78rem !important;
+                min-height: 2.45rem;
+                box-shadow: 0 1px 4px rgba(56, 189, 248, 0.22) !important;
+            }
+            /*
+               Step 1 card — Transform instructions only (has textarea, no CSV uploader).
+               Avoids clobbering Upload bordered panel or other bordered containers.
+             */
+            section[data-testid="stMain"]
+                [data-testid="stVerticalBlockBorderWrapper"]:has(textarea):not(:has([data-testid="stFileUploader"])) {
+                border: 1px solid rgba(34, 211, 238, 0.45) !important;
+                border-radius: 0 !important;
+                background: linear-gradient(165deg, #081216 0%, #040608 100%) !important;
+                box-shadow:
+                    0 0 0 1px rgba(6, 182, 212, 0.12) inset,
+                    0 0 32px rgba(6, 182, 212, 0.08) !important;
+                padding: 0.85rem 1rem 1rem 1rem !important;
+            }
+            section[data-testid="stMain"]
+                [data-testid="stVerticalBlockBorderWrapper"]:has(textarea):not(:has([data-testid="stFileUploader"]))
+                [data-testid="stMarkdownContainer"]
+                h4 {
+                color: #f8fafc !important;
+                font-weight: 700 !important;
+                margin-bottom: 0.35rem !important;
+            }
+            section[data-testid="stMain"]
+                [data-testid="stVerticalBlockBorderWrapper"]:has(textarea):not(:has([data-testid="stFileUploader"]))
+                textarea {
+                background: #ffffff !important;
+                color: #0f172a !important;
+                border-radius: 0 !important;
+                border: 1px solid rgba(148, 163, 184, 0.5) !important;
+                font-size: 0.92rem !important;
+                min-height: 148px !important;
+            }
+            section[data-testid="stMain"]
+                [data-testid="stVerticalBlockBorderWrapper"]:has(textarea):not(:has([data-testid="stFileUploader"]))
+                div[data-testid="stButton"]:has(button[kind="primary"]) {
+                width: 100%;
+            }
+            section[data-testid="stMain"]
+                [data-testid="stVerticalBlockBorderWrapper"]:has(textarea):not(:has([data-testid="stFileUploader"]))
+                div[data-testid="stButton"]:has(button[kind="primary"])
+                button[kind="primary"] {
+                width: 100%;
+                min-height: 2.65rem;
+                border-radius: 0 !important;
+                font-weight: 600 !important;
+                border: none !important;
+                background-image: linear-gradient(
+                    92deg,
+                    #0e7490 0%,
+                    #0891b2 38%,
+                    #06b6d4 72%,
+                    #22d3ee 100%
+                ) !important;
+                box-shadow: 0 0 28px rgba(6, 182, 212, 0.35) !important;
+                color: #ffffff !important;
+            }
+            section[data-testid="stMain"]
+                [data-testid="stVerticalBlockBorderWrapper"]:has(textarea):not(:has([data-testid="stFileUploader"]))
+                div[data-testid="stButton"]:has(button[kind="primary"])
+                button[kind="primary"]:hover {
+                filter: brightness(1.06);
             }
 
         </style>
@@ -775,6 +931,16 @@ if "user_instructions" not in st.session_state:
     st.session_state.user_instructions: str = ""
 if "pipeline_run_result" not in st.session_state:
     st.session_state.pipeline_run_result: Optional[Dict] = None
+if "transform_activity_log" not in st.session_state:
+    st.session_state.transform_activity_log: List[str] = []
+if "transform_expander_open" not in st.session_state:
+    st.session_state.transform_expander_open = False
+if "transform_workflow_step" not in st.session_state:
+    st.session_state.transform_workflow_step = 0
+if "transform_plan_draft" not in st.session_state:
+    st.session_state.transform_plan_draft = ""
+if "transform_code_draft" not in st.session_state:
+    st.session_state.transform_code_draft = ""
 if "dw_logged_in" not in st.session_state:
     st.session_state.dw_logged_in = False
 if "dw_user_display" not in st.session_state:
@@ -795,18 +961,6 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "auth_username" not in st.session_state:
     st.session_state.auth_username: Optional[str] = None
-if "generated_code_path" not in st.session_state:
-    st.session_state.generated_code_path: str = ""
-if "hitl_stage" not in st.session_state:
-    st.session_state.hitl_stage: str = "idle"   # idle | plan_ready | code_ready | complete
-if "hitl_plan" not in st.session_state:
-    st.session_state.hitl_plan: str = ""
-if "hitl_code" not in st.session_state:
-    st.session_state.hitl_code: str = ""
-if "hitl_code_path" not in st.session_state:
-    st.session_state.hitl_code_path: str = ""
-if "hitl_error" not in st.session_state:
-    st.session_state.hitl_error: str = ""
 
 
 PAGES = ["Upload", "Mapper", "Transform", "Logs & Downloads"]
@@ -1269,27 +1423,17 @@ def _reset_mapper_outputs() -> None:
     st.session_state.transform_source_sig = None
 
 
-def _reset_hitl() -> None:
-    st.session_state.hitl_stage = "idle"
-    st.session_state.hitl_plan = ""
-    st.session_state.hitl_code = ""
-    st.session_state.hitl_code_path = ""
-    st.session_state.hitl_error = ""
-    st.session_state.generated_code_path = ""
+def _reset_pipeline_session() -> None:
+    st.session_state.uploaded_dfs = {}
+    _reset_mapper_outputs()
+    st.session_state.run_logs = []
+    st.session_state.source_mode = "Upload csv"
+    st.session_state.trigger_csv_picker = False
     st.session_state.agent_dialogue = {
         "Scout": "Waiting for connection...",
         "Architect": "Waiting for connection...",
         "Engineer": "Waiting for connection...",
     }
-
-
-def _reset_pipeline_session() -> None:
-    st.session_state.uploaded_dfs = {}
-    _reset_mapper_outputs()
-    _reset_hitl()
-    st.session_state.run_logs = []
-    st.session_state.source_mode = "Upload csv"
-    st.session_state.trigger_csv_picker = False
     st.session_state.upload_reset_id = int(st.session_state.get("upload_reset_id", 0)) + 1
 
 
@@ -2293,14 +2437,56 @@ def _agent_dialogue_text(dialogue: Dict[str, str]) -> str:
 def _agent_dialogue_html(dialogue: Dict[str, str]) -> str:
     escaped = html.escape(_agent_dialogue_text(dialogue)).replace("\n", "<br>")
     return (
-        '<div style="border:1px solid rgba(45,27,78,0.85);border-radius:12px;'
-        'background:linear-gradient(180deg,#1f1528,#1a1224);padding:12px 14px;min-height:260px;'
-        'box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset;">'
+        '<div style="border:1px solid rgba(34,211,238,0.45);border-radius:0;'
+        'background:linear-gradient(180deg,#081216,#05090b);padding:12px 14px;min-height:260px;'
+        'box-shadow:0 0 0 1px rgba(6,182,212,0.15) inset,0 0 24px rgba(6,182,212,0.06);">'
         '<div style="font-size:0.84rem;color:#e2e8f0;line-height:1.6;'
         "font-family:'IBM Plex Mono',monospace;word-break:break-word;white-space:normal;\">"
         + escaped
         + "</div></div>"
     )
+
+
+def _set_transform_workflow_step(step: int) -> None:
+    st.session_state.transform_workflow_step = int(step)
+
+
+def _render_transform_workflow_nav() -> None:
+    """Clickable workflow strip (Instructions → Complete)."""
+    if "transform_workflow_step" not in st.session_state:
+        st.session_state.transform_workflow_step = 0
+    step = int(st.session_state.transform_workflow_step)
+    if step < 0 or step > 3:
+        st.session_state.transform_workflow_step = 0
+        step = 0
+
+    labels: List[Tuple[str, int]] = []
+    for idx, base in enumerate(["Instructions", "Approve plan", "Approve code", "Complete"]):
+        if idx < step:
+            labels.append((f"✓ {base}", idx))
+        elif idx == step:
+            labels.append((f"▸ {base}", idx))
+        else:
+            labels.append((base, idx))
+
+    with st.container(key="dw_tf_workflow_nav"):
+        col0, col1, col2, col3 = st.columns(4)
+        for col, (txt, idx) in zip([col0, col1, col2, col3], labels):
+            with col:
+                st.button(
+                    txt,
+                    key=f"dw_tf_nav_{idx}",
+                    type="primary" if step == idx else "secondary",
+                    use_container_width=True,
+                    on_click=_set_transform_workflow_step,
+                    args=(idx,),
+                )
+
+
+def _transform_activity_log_markdown(lines: List[str]) -> str:
+    if not lines:
+        return "*No activity yet. Run the pipeline to stream Scout + Architect progress here.*"
+    return "\n\n".join(lines)
 
 
 def render_agent_dialogue_box(placeholder: Optional[object] = None) -> None:
@@ -2448,57 +2634,57 @@ if current == "Upload":
         """
         <style>
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {
-            border: 1px solid rgba(45, 27, 78, 0.75) !important;
-            border-radius: 14px !important;
-            background: linear-gradient(175deg, rgba(34, 24, 46, 0.92) 0%, rgba(26, 18, 36, 0.88) 100%) !important;
+            border: 1px solid rgba(34, 211, 238, 0.38) !important;
+            border-radius: 0 !important;
+            background: linear-gradient(175deg, rgba(8, 18, 22, 0.96) 0%, rgba(4, 6, 8, 0.95) 100%) !important;
             padding: 0.6rem 0.65rem 0.8rem !important;
             margin-bottom: 0.35rem !important;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.035) inset, 0 10px 32px rgba(0, 0, 0, 0.35) !important;
+            box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.1) inset, 0 10px 32px rgba(0, 0, 0, 0.42) !important;
         }
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"]:nth-child(1),
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child {
-            background: linear-gradient(180deg, #2a1a42 0%, #221530 45%, #1a1224 100%) !important;
-            border-radius: 12px !important;
+            background: linear-gradient(180deg, #0a2830 0%, #081216 50%, #05090b 100%) !important;
+            border-radius: 0 !important;
             padding: 0.5rem 0.65rem 0.6rem !important;
             margin: 0.1rem 0.15rem 0.1rem 0.1rem !important;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(168, 85, 247, 0.35) !important;
+            box-shadow: inset 0 1px 0 rgba(103, 232, 249, 0.06) !important;
+            border: 1px solid rgba(34, 211, 238, 0.32) !important;
         }
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"]:nth-child(2),
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] > div[data-testid="column"]:last-child {
-            background: linear-gradient(180deg, #1f1528 0%, #1a1224 100%) !important;
-            border-radius: 12px !important;
+            background: linear-gradient(180deg, #081216 0%, #05090b 100%) !important;
+            border-radius: 0 !important;
             padding: 0.35rem 0.4rem !important;
             margin: 0.1rem 0.1rem 0.1rem 0 !important;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset, 0 6px 20px rgba(0, 0, 0, 0.35) !important;
-            border: 1px solid rgba(45, 27, 78, 0.55) !important;
+            box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.06) inset, 0 6px 20px rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(34, 211, 238, 0.28) !important;
             align-self: flex-start !important;
         }
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stFileUploader"] section {
             background: transparent !important;
         }
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
-            border: 2px dashed rgba(196, 181, 254, 0.75) !important;
-            border-radius: 12px !important;
-            background: rgba(18, 10, 24, 0.95) !important;
+            border: 2px dashed rgba(34, 211, 238, 0.52) !important;
+            border-radius: 0 !important;
+            background: rgba(4, 8, 10, 0.96) !important;
             padding: 1rem 1.2rem !important;
             min-height: 7.5rem !important;
             box-shadow:
-                0 0 0 1px rgba(168, 85, 247, 0.28) inset,
-                0 4px 20px rgba(0, 0, 0, 0.4) !important;
+                0 0 0 1px rgba(6, 182, 212, 0.2) inset,
+                0 4px 20px rgba(0, 0, 0, 0.45) !important;
         }
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .stTextInput input {
-            border-radius: 10px !important;
-            border: 1px solid rgba(45, 27, 78, 0.9) !important;
-            background: #140c1c !important;
-            color: #f8f7fc !important;
+            border-radius: 0 !important;
+            border: 1px solid rgba(34, 211, 238, 0.32) !important;
+            background: #05090b !important;
+            color: #ecfeff !important;
             padding: 0.55rem 0.65rem !important;
         }
         section[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] .stTextInput label p {
             font-size: 0.72rem !important;
             font-weight: 700 !important;
             letter-spacing: 0.04em !important;
-            color: #b0a8bf !important;
+            color: #7ddaea !important;
             text-transform: uppercase;
         }
         </style>
@@ -2722,192 +2908,92 @@ elif current == "Mapper":
 # Page 3: Transform
 # -----------------------------------------------------------------------------
 elif current == "Transform":
-    _hero("Step 3", "Transform", "AI-guided transformation with human-in-the-loop approval")
+    _hero("Step 3", "Transform", "Transformation run + table preview")
 
     if not st.session_state.uploaded_dfs:
         st.warning("No uploaded data found. Go back to Upload.")
     else:
-        stage = st.session_state.hitl_stage
-
-        tk1, tk2, tk3 = st.columns(3)
-        with tk1:
-            st.metric("Source tables", len(st.session_state.uploaded_dfs))
-        with tk2:
-            n_rows = len(st.session_state.transformed_df) if st.session_state.transformed_df is not None else 0
-            st.metric("Transformed rows", n_rows)
-        with tk3:
-            _stage_labels = {"idle": "Ready", "plan_ready": "Review plan", "code_ready": "Review code", "complete": "Done"}
-            st.metric("Stage", _stage_labels.get(stage, stage))
-
-        # Persistent error banner
-        if st.session_state.hitl_error:
-            st.error(st.session_state.hitl_error)
-            if st.button("Dismiss", key="dismiss_hitl_error"):
-                st.session_state.hitl_error = ""
-                st.rerun()
+        transform_sig = (
+            tuple(sorted((name, len(df), len(df.columns)) for name, df in st.session_state.uploaded_dfs.items())),
+            st.session_state.mapper_source_sig,
+        )
+        if st.session_state.transform_source_sig != transform_sig:
+            st.session_state.transformed_df = run_transform(st.session_state.uploaded_dfs)
+            st.session_state.transform_source_sig = transform_sig
+            st.session_state.run_logs.append(
+                {"stage": "Transform", "status": "completed", "notes": "Auto-transform on page load"}
+            )
 
         t1, t2, t3 = st.tabs(["Transform", "Discarded Data", "Transformed data"])
-
         with t1:
-            # ── Step progress bar ────────────────────────────────────────────────
-            _step_names = ["Instructions", "Approve plan", "Approve code", "Complete"]
-            _stage_to_step = {"idle": 0, "plan_ready": 1, "code_ready": 2, "complete": 3}
-            _active = _stage_to_step.get(stage, 0)
-            _step_cols = st.columns(4)
-            for _si, (_sc, _sn) in enumerate(zip(_step_cols, _step_names)):
-                with _sc:
-                    if _si < _active:
-                        st.markdown(
-                            f'<div style="text-align:center;padding:6px 4px;border-radius:6px;'
-                            f'background:#d1fae5;color:#065f46;font-size:0.78rem;font-weight:600;">'
-                            f'&#10003; {_sn}</div>', unsafe_allow_html=True)
-                    elif _si == _active:
-                        st.markdown(
-                            f'<div style="text-align:center;padding:6px 4px;border-radius:6px;'
-                            f'background:#dbeafe;color:#1e40af;font-size:0.78rem;font-weight:700;'
-                            f'border:2px solid #3b82f6;">&#9654; {_sn}</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(
-                            f'<div style="text-align:center;padding:6px 4px;border-radius:6px;'
-                            f'background:#f1f5f9;color:#94a3b8;font-size:0.78rem;">{_sn}</div>',
-                            unsafe_allow_html=True)
-            st.markdown("<div style='margin-top:0.75rem'></div>", unsafe_allow_html=True)
+            _render_transform_workflow_nav()
+            step = int(st.session_state.get("transform_workflow_step", 0))
 
-            # ── STEP 1: idle ─────────────────────────────────────────────────────
-            if stage == "idle":
+            if step == 0:
                 with st.container(border=True):
-                    st.markdown("**Step 1 — Instructions**")
-                    st.caption("Describe the transformation rules, then click Run. Scout and Architect will run automatically.")
+                    st.markdown("#### Step 1 — Instructions")
+                    st.caption(
+                        "Describe the transformation rules, then click Run. Scout and Architect will run automatically."
+                    )
                     user_instructions = st.text_area(
-                        "Instructions",
+                        "Instructions for the pipeline",
                         value=st.session_state.user_instructions,
-                        placeholder="e.g. Drop rows where revenue is null. Rename 'cust_id' to 'customer_id'.",
-                        height=100,
+                        placeholder=(
+                            "e.g. Drop all rows where course titles are not in English and only grab "
+                            "the first 20 courses for each Alphabet."
+                        ),
+                        height=180,
                         key="user_instructions_input",
                         label_visibility="collapsed",
                     )
                     st.session_state.user_instructions = user_instructions
-                    run_col, _ = st.columns([1, 3])
-                    with run_col:
-                        run_clicked = st.button("Run pipeline", type="primary", key="run_pipeline_btn", use_container_width=True)
+
+                    run_clicked = st.button(
+                        "Run pipeline",
+                        type="primary",
+                        key="run_pipeline_btn",
+                        use_container_width=True,
+                    )
 
                 if run_clicked:
-                    source_name = next(iter(st.session_state.uploaded_dfs))
-                    source_df = st.session_state.uploaded_dfs[source_name]
-
-                    upload_error = None
-                    saved_path = f"datasets/{source_name}"
-                    try:
-                        upload_resp = requests.post(
-                            f"{BACKEND_URL}/api/upload",
-                            files={"file": (source_name, to_csv_bytes(source_df), "text/csv")},
-                            timeout=30,
-                        )
-                        if upload_resp.status_code == 200:
-                            saved_path = upload_resp.json().get("saved_path", saved_path)
-                        else:
-                            upload_error = upload_resp.json().get("error", "Upload failed")
-                    except requests.exceptions.ConnectionError:
-                        upload_error = f"Cannot reach backend at {BACKEND_URL}. Is the API server running?"
-                    except Exception as exc:
-                        upload_error = f"Upload error: {exc}"
-
-                    if upload_error:
-                        st.session_state.hitl_error = upload_error
-                        st.rerun()
+                    if not st.session_state.uploaded_dfs:
+                        st.error("Upload a dataset first before running the pipeline.")
                     else:
-                        table_name = source_name.rsplit(".", 1)[0].lower().replace(" ", "_").replace("-", "_")
+                        st.session_state.pipeline_run_result = None
+                        st.session_state.transform_workflow_step = 0
+                        st.session_state.transform_expander_open = True
+                        st.session_state.transform_activity_log = ["Uploading data and starting pipeline..."]
+                        st.session_state.transform_plan_draft = _default_plan_from_instructions(
+                            st.session_state.user_instructions
+                        )
+                        st.session_state.transform_code_draft = ""
+
+                        source_name = next(iter(st.session_state.uploaded_dfs))
                         payload = {
                             "source_type": "csv",
-                            "source_path": saved_path,
+                            "source_path": f"datasets/{source_name}",
                             "user_instructions": st.session_state.user_instructions,
                             "target_db_path": "output/etl_output.db",
-                            "target_table": table_name,
+                            "target_table": "courses",
                             "if_exists": "replace",
                         }
-                        streaming_dialogue: Dict[str, str] = {"Scout": "Connecting…", "Architect": "Waiting…", "Engineer": "Waiting…"}
+
+                        streaming_dialogue: Dict[str, str] = {
+                            "Scout": "Connecting…",
+                            "Architect": "Waiting…",
+                            "Engineer": "Waiting…",
+                        }
                         st.session_state.agent_dialogue = streaming_dialogue
 
-                        with st.status("Running Scout + Architect…", expanded=True) as run_status:
-                            st.write("Uploading data and starting pipeline…")
-                            token_buf: Dict[str, str] = {"architect": ""}
-                            plan_preview = st.empty()
-                            try:
-                                with requests.post(f"{BACKEND_URL}/api/run/stream/plan", json=payload, stream=True, timeout=300) as resp:
-                                    for raw_line in resp.iter_lines():
-                                        if not raw_line:
-                                            continue
-                                        line = raw_line.decode("utf-8")
-                                        if not line.startswith("data: "):
-                                            continue
-                                        try:
-                                            event = _json.loads(line[6:])
-                                        except _json.JSONDecodeError:
-                                            continue
-                                        etype = event.get("type", "")
-                                        node = event.get("node", "")
-                                        if etype == "token" and node == "architect":
-                                            token_buf["architect"] += event.get("token", "")
-                                            plan_preview.markdown(token_buf["architect"])
-                                        elif etype == "node_done":
-                                            if node == "scout":
-                                                st.write(f"Scout done — {event.get('record_count', '?')} records ingested.")
-                                                streaming_dialogue["Scout"] = f"Done — {event.get('record_count', '?')} records ingested."
-                                            elif node == "architect":
-                                                st.write("Architect done — plan ready for review.")
-                                                streaming_dialogue["Architect"] = event.get("transformation_plan", "").strip() or "Plan generated."
-                                        elif etype == "plan_ready":
-                                            st.session_state.hitl_plan = event.get("transformation_plan", "")
-                                            st.session_state.hitl_stage = "plan_ready"
-                                            st.session_state.hitl_error = ""
-                                            st.session_state.agent_dialogue = streaming_dialogue
-                                            st.session_state.run_logs.append({"stage": "Phase 1 — plan", "status": "ready for review"})
-                                            run_status.update(label="Architect plan ready — awaiting your approval", state="complete")
-                                            break
-                                        elif etype == "error":
-                                            st.session_state.hitl_error = f"Pipeline error (Phase 1): {event.get('error', 'unknown')}"
-                                            run_status.update(label="Pipeline error", state="error")
-                                            break
-                            except requests.exceptions.ConnectionError:
-                                st.session_state.hitl_error = f"Cannot reach backend at {BACKEND_URL}. Is the API server running?"
-                            except Exception as exc:
-                                st.session_state.hitl_error = f"Unexpected error: {exc}"
-                        st.rerun()
+                        token_buf: Dict[str, str] = {"architect": "", "engineer": ""}
 
-            # ── STEP 2: plan_ready ───────────────────────────────────────────────
-            elif stage == "plan_ready":
-                st.markdown(
-                    '<div style="padding:10px 14px;border-radius:8px;background:#fef9c3;'
-                    'border:1px solid #fbbf24;color:#713f12;font-weight:600;margin-bottom:0.75rem;">'
-                    '&#9203; Waiting for your approval — review the Architect\'s plan below</div>',
-                    unsafe_allow_html=True)
-                with st.container(border=True):
-                    st.markdown("**Step 2 — Approve transformation plan**")
-                    st.caption("The Architect mapped out the transformation. Edit if needed, then approve to generate code.")
-                    edited_plan = st.text_area(
-                        "Transformation plan",
-                        value=st.session_state.hitl_plan,
-                        height=320,
-                        key="hitl_plan_editor",
-                        label_visibility="collapsed",
-                    )
-                    approve_col, reset_col = st.columns([3, 1])
-                    with approve_col:
-                        approve_plan = st.button("Approve plan — generate code", type="primary", key="approve_plan_btn", use_container_width=True)
-                    with reset_col:
-                        if st.button("Start over", key="reset_from_plan_btn", use_container_width=True):
-                            _reset_hitl()
-                            st.rerun()
-
-                if approve_plan:
-                    st.session_state.hitl_plan = edited_plan
-                    streaming_dialogue = dict(st.session_state.agent_dialogue)
-                    streaming_dialogue["Engineer"] = "Generating code…"
-                    with st.status("Engineer generating transformation code…", expanded=True) as gen_status:
-                        token_buf = {"engineer_generate": ""}
-                        code_preview = st.empty()
                         try:
-                            with requests.post(f"{BACKEND_URL}/api/run/stream/generate", json={"transformation_plan": edited_plan}, stream=True, timeout=300) as resp:
+                            with requests.post(
+                                f"{BACKEND_URL}/api/run/stream",
+                                json=payload,
+                                stream=True,
+                                timeout=300,
+                            ) as resp:
                                 for raw_line in resp.iter_lines():
                                     if not raw_line:
                                         continue
@@ -2918,154 +3004,187 @@ elif current == "Transform":
                                         event = _json.loads(line[6:])
                                     except _json.JSONDecodeError:
                                         continue
+
                                     etype = event.get("type", "")
                                     node = event.get("node", "")
-                                    if etype == "token" and node == "engineer_generate":
-                                        token_buf["engineer_generate"] += event.get("token", "")
-                                        streaming_dialogue["Engineer"] = token_buf["engineer_generate"]
-                                        code_preview.code(token_buf["engineer_generate"], language="python")
-                                    elif etype == "node_done" and node == "engineer_generate":
-                                        n_lines = len(event.get("transformation_code", "").splitlines())
-                                        st.write(f"Code generated — {n_lines} lines. Ready for review.")
-                                        streaming_dialogue["Engineer"] = f"Code generated ({n_lines} lines). Ready for review."
-                                    elif etype == "code_ready":
-                                        st.session_state.hitl_code = event.get("transformation_code", "")
-                                        st.session_state.hitl_code_path = event.get("generated_code_path", "")
-                                        st.session_state.generated_code_path = event.get("generated_code_path", "")
-                                        st.session_state.hitl_stage = "code_ready"
-                                        st.session_state.hitl_error = ""
-                                        st.session_state.agent_dialogue = streaming_dialogue
-                                        st.session_state.run_logs.append({"stage": "Phase 2a — generate", "status": "ready for review"})
-                                        gen_status.update(label="Code ready — awaiting your approval", state="complete")
-                                        break
-                                    elif etype == "error":
-                                        st.session_state.hitl_error = f"Pipeline error (Phase 2a): {event.get('error', 'unknown')}"
-                                        gen_status.update(label="Code generation error", state="error")
-                                        break
-                        except requests.exceptions.ConnectionError:
-                            st.session_state.hitl_error = f"Cannot reach backend at {BACKEND_URL}. Is the API server running?"
-                        except Exception as exc:
-                            st.session_state.hitl_error = f"Unexpected error: {exc}"
-                    st.rerun()
 
-            # ── STEP 3: code_ready ───────────────────────────────────────────────
-            elif stage == "code_ready":
-                st.markdown(
-                    '<div style="padding:10px 14px;border-radius:8px;background:#fef9c3;'
-                    'border:1px solid #fbbf24;color:#713f12;font-weight:600;margin-bottom:0.75rem;">'
-                    '&#9203; Waiting for your approval — review the Engineer\'s code below</div>',
-                    unsafe_allow_html=True)
-                with st.container(border=True):
-                    st.markdown("**Step 3 — Approve transformation code**")
-                    st.caption("The Engineer wrote this script. Download to inspect locally, then approve to execute.")
-                    st.code(st.session_state.hitl_code, language="python")
-                    dl_col, approve_col, reset_col = st.columns([2, 2, 1])
-                    with dl_col:
-                        st.download_button(
-                            label="Download .py",
-                            data=st.session_state.hitl_code.encode("utf-8"),
-                            file_name="engineer_transformation.py",
-                            mime="text/x-python",
-                            use_container_width=True,
-                        )
-                    with approve_col:
-                        approve_code = st.button("Approve & execute", type="primary", key="approve_code_btn", use_container_width=True)
-                    with reset_col:
-                        if st.button("Start over", key="reset_from_code_btn", use_container_width=True):
-                            _reset_hitl()
-                            st.rerun()
+                                    if etype == "token":
+                                        if node in token_buf:
+                                            token_buf[node] += event.get("token", "")
+                                            key = node.capitalize()
+                                            streaming_dialogue[key] = token_buf[node]
+                                            if node == "architect":
+                                                st.session_state.transform_plan_draft = token_buf[node]
+                                            if node == "engineer":
+                                                st.session_state.transform_code_draft = token_buf[node]
 
-                if approve_code:
-                    streaming_dialogue = dict(st.session_state.agent_dialogue)
-                    streaming_dialogue["Engineer"] = "Executing approved code…"
-                    with st.status("Executing transformation…", expanded=True) as exec_status:
-                        try:
-                            with requests.post(f"{BACKEND_URL}/api/run/stream/run", json={"transformation_code": st.session_state.hitl_code}, stream=True, timeout=300) as resp:
-                                for raw_line in resp.iter_lines():
-                                    if not raw_line:
-                                        continue
-                                    line = raw_line.decode("utf-8")
-                                    if not line.startswith("data: "):
-                                        continue
-                                    try:
-                                        event = _json.loads(line[6:])
-                                    except _json.JSONDecodeError:
-                                        continue
-                                    etype = event.get("type", "")
-                                    node = event.get("node", "")
-                                    if etype == "token" and node == "engineer_generate":
-                                        streaming_dialogue["Engineer"] = "Auto-retry: regenerating code…"
-                                        st.write("Execution failed — auto-retrying…")
                                     elif etype == "node_done":
-                                        if node == "engineer_generate":
-                                            new_code = event.get("transformation_code", "")
-                                            if new_code:
-                                                st.session_state.hitl_code = new_code
-                                                st.session_state.generated_code_path = event.get("generated_code_path", "")
-                                            streaming_dialogue["Engineer"] = "Code regenerated (retry). Executing…"
-                                            st.write("New code generated. Executing…")
-                                        elif node == "engineer_execute":
+                                        if node == "scout":
+                                            count = event.get("record_count", "?")
+                                            streaming_dialogue["Scout"] = f"Done — {count} records ingested."
+                                            st.session_state.transform_activity_log.append(streaming_dialogue["Scout"])
+                                        elif node == "architect":
+                                            plan = event.get("transformation_plan", "")
+                                            st.session_state.transform_plan_draft = plan.strip() or st.session_state.transform_plan_draft
+                                            streaming_dialogue["Architect"] = plan.strip() or "Plan generated."
+                                            token_buf["architect"] = ""
+                                        elif node == "engineer":
                                             verdict = event.get("engineer_verdict", "")
                                             err = event.get("engineer_error", "")
-                                            streaming_dialogue["Engineer"] = f"Verdict: {verdict}" + (f"\nError: {err}" if err else "")
-                                            st.write(f"Execute verdict: {verdict}" + (f" — {err}" if err else ""))
-                                            transformed_records = event.get("transformed_data")
-                                            if transformed_records and verdict == "pass":
-                                                st.session_state.transformed_df = pd.DataFrame(transformed_records)
+                                            streaming_dialogue["Engineer"] = (
+                                                f"Verdict: {verdict}" + (f"\nError: {err}" if err else "")
+                                            )
+                                            token_buf["engineer"] = ""
                                         elif node == "loader":
                                             rows = event.get("rows_written", "?")
-                                            streaming_dialogue["Scout"] = st.session_state.agent_dialogue.get("Scout", "") + f"\nLoaded: {rows} rows to DB."
-                                            st.write(f"Loader done — {rows} rows written.")
+                                            streaming_dialogue["Scout"] += f"\nLoaded: {rows} rows to DB."
+
+                                        audit = event.get("latest_audit")
+                                        if audit:
+                                            aline = (
+                                                f"[{audit.get('agent')}] {audit.get('action')} — "
+                                                f"{audit.get('summary')}"
+                                            )
+                                            st.session_state.transform_activity_log.append(aline)
+
                                     elif etype == "done":
-                                        st.session_state.hitl_stage = "complete"
                                         st.session_state.agent_dialogue = streaming_dialogue
                                         st.session_state.pipeline_run_result = {"status": "success"}
-                                        st.session_state.run_logs.append({"stage": "Pipeline run", "status": "success"})
-                                        exec_status.update(label="Pipeline complete!", state="complete")
+                                        st.session_state.transform_workflow_step = 1
+                                        if not st.session_state.transform_code_draft.strip():
+                                            st.session_state.transform_code_draft = _default_code_from_plan(
+                                                st.session_state.transform_plan_draft
+                                            )
+                                        st.session_state.run_logs.append(
+                                            {"stage": "Pipeline run", "status": "success"}
+                                        )
+                                        st.session_state.transform_activity_log.append("Pipeline complete!")
                                         break
-                                    elif etype == "error":
-                                        st.session_state.hitl_error = f"Pipeline error: {event.get('error', 'unknown')}"
-                                        exec_status.update(label="Execution error", state="error")
-                                        break
-                        except requests.exceptions.ConnectionError:
-                            st.session_state.hitl_error = f"Cannot reach backend at {BACKEND_URL}. Is the API server running?"
-                        except Exception as exc:
-                            st.session_state.hitl_error = f"Unexpected error: {exc}"
-                    st.rerun()
 
-            # ── STEP 4: complete ─────────────────────────────────────────────────
-            elif stage == "complete":
-                st.success("Pipeline complete — data transformed and loaded.")
-                if st.session_state.transformed_df is not None:
-                    st.markdown("**Transformed data preview**")
-                    st.dataframe(st.session_state.transformed_df.head(20), use_container_width=True)
-                    st.caption("Go to the **Transformed data** tab or **Logs & Downloads** for full export.")
-                c_again, _ = st.columns([1, 4])
-                with c_again:
-                    if st.button("Run again", type="secondary", key="run_again_btn"):
-                        _reset_hitl()
+                                    elif etype == "error":
+                                        err_msg = f"Pipeline error: {event.get('error', 'unknown')}"
+                                        st.session_state.transform_activity_log.append(err_msg)
+                                        break
+
+                        except requests.exceptions.ConnectionError:
+                            msg = f"Cannot reach backend at {BACKEND_URL}. Is the API server running?"
+                            st.session_state.transform_activity_log.append(msg)
+                            st.error(msg)
+                        except Exception as exc:
+                            msg = f"Unexpected error: {exc}"
+                            st.session_state.transform_activity_log.append(msg)
+                            st.error(msg)
+
                         st.rerun()
 
-            st.markdown("---")
-            st.markdown("**Agent dialogue**")
+            elif step == 1:
+                st.warning("⏳ Waiting for your approval — review the Architect's plan below")
+                with st.container(border=True):
+                    st.markdown("#### Step 2 — Approve transformation plan")
+                    st.caption(
+                        "The Architect mapped out the transform. Edit if needed, then approve to generate code."
+                    )
+                    st.session_state.transform_plan_draft = st.text_area(
+                        "Plan draft",
+                        value=st.session_state.transform_plan_draft,
+                        key="transform_plan_draft_input",
+                        height=260,
+                        label_visibility="collapsed",
+                    )
+                    cpa, csr = st.columns([3, 1])
+                    with cpa:
+                        if st.button("Approve plan — generate code", type="primary", use_container_width=True):
+                            if not st.session_state.transform_code_draft.strip():
+                                st.session_state.transform_code_draft = _default_code_from_plan(
+                                    st.session_state.transform_plan_draft
+                                )
+                            st.session_state.transform_workflow_step = 2
+                            st.rerun()
+                    with csr:
+                        if st.button("Start over", use_container_width=True):
+                            st.session_state.transform_workflow_step = 0
+                            st.rerun()
+
+            elif step == 2:
+                st.warning("⏳ Waiting for your approval — review the Engineer's code below")
+                with st.container(border=True):
+                    st.markdown("#### Step 3 — Approve transformation code")
+                    st.caption("The Engineer wrote this script. Download to inspect locally, then approve to execute.")
+                    code_preview = st.session_state.transform_code_draft or _default_code_from_plan(
+                        st.session_state.transform_plan_draft
+                    )
+                    st.code(code_preview, language="python")
+                    cdl, cap, csr = st.columns([1.3, 1.3, 1])
+                    with cdl:
+                        st.download_button(
+                            "Download .py",
+                            data=code_preview.encode("utf-8"),
+                            file_name="transform_pipeline.py",
+                            mime="text/x-python",
+                            use_container_width=True,
+                            key="dw_tf_download_code",
+                        )
+                    with cap:
+                        if st.button("Approve & execute", type="primary", use_container_width=True):
+                            st.session_state.transform_workflow_step = 3
+                            st.rerun()
+                    with csr:
+                        if st.button("Start over", use_container_width=True, key="dw_tf_start_over_code"):
+                            st.session_state.transform_workflow_step = 0
+                            st.rerun()
+
+            else:
+                with st.container(border=True):
+                    st.markdown("#### Complete")
+                    if st.session_state.transformed_df is not None and not st.session_state.transformed_df.empty:
+                        st.dataframe(st.session_state.transformed_df.head(20), use_container_width=True, height=260)
+                        st.caption("Go to the Transformed data tab or Logs & Downloads for full export.")
+                    else:
+                        st.info("No transformed output available yet.")
+
+                    if st.button("Run again", key="dw_tf_run_again"):
+                        st.session_state.transform_workflow_step = 0
+                        st.rerun()
+
+            if step in (0, 1, 2):
+                _tf_exp_open = bool(st.session_state.transform_expander_open) or bool(
+                    st.session_state.transform_activity_log
+                )
+                with st.expander("Running Scout + Architect...", expanded=_tf_exp_open):
+                    st.markdown(_transform_activity_log_markdown(st.session_state.transform_activity_log))
+
+            st.markdown("##### Agent dialogue")
             st.markdown(_agent_dialogue_html(st.session_state.agent_dialogue), unsafe_allow_html=True)
 
         with t2:
             st.markdown("##### Discarded Data")
             discarded = st.session_state.discarded_df
             if discarded is not None and not discarded.empty:
-                _render_searchable_dataframe(discarded, key_prefix="discarded_rows", height=520)
+                _render_searchable_dataframe(
+                    discarded,
+                    key_prefix="discarded_rows",
+                    height=520,
+                )
                 st.caption(f"{len(discarded):,} rows · {len(discarded.columns)} columns")
             else:
-                st.info("No discarded rows yet. Dropped records will appear here after the pipeline runs.")
-
+                st.info(
+                    "No discarded rows are in session yet. When the transform pipeline records "
+                    "dropped or rejected records, they will show here."
+                )
         with t3:
             st.markdown("##### Transformed data")
             if st.session_state.transformed_df is not None and not st.session_state.transformed_df.empty:
-                _render_searchable_dataframe(st.session_state.transformed_df, key_prefix="transformed_full", height=520)
-                st.caption(f"{len(st.session_state.transformed_df):,} rows · {len(st.session_state.transformed_df.columns)} columns")
+                _render_searchable_dataframe(
+                    st.session_state.transformed_df,
+                    key_prefix="transformed_full",
+                    height=520,
+                )
+                st.caption(
+                    f"{len(st.session_state.transformed_df):,} rows · "
+                    f"{len(st.session_state.transformed_df.columns)} columns"
+                )
             else:
-                st.info("No transformed data yet. Complete the pipeline to see results here.")
+                st.info("No transformed table yet. Complete **Upload** and **Mapper**, then return here.")
 
     c1, c2, _ = st.columns([1, 1, 6])
     with c1:
