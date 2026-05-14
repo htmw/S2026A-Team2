@@ -2,6 +2,7 @@
 import json
 from datetime import datetime
 from typing import Any
+from tools.data_quality import validate_dataset_quality
 
 from tools.api_tools import fetch_alpha_vantage
 from tools.csv_tools import read_csv, infer_schema
@@ -45,6 +46,16 @@ def scout_node(state: dict) -> dict:
 
         else:
             raise ValueError(f"Unknown source_type: {source_type!r}")
+            
+
+        data_quality_report = validate_dataset_quality(raw_data, raw_schema)
+
+        audit_log.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "agent": "Scout",
+            "action": "data_quality_validation",
+            "summary": f"US22 validation {data_quality_report['summary']['status']}. Issues: {data_quality_report['summary']['total_issues']}",
+        })
 
         audit_log.append({
             "timestamp": datetime.utcnow().isoformat(),
@@ -66,4 +77,5 @@ def scout_node(state: dict) -> dict:
         "raw_data": raw_data,
         "raw_schema": raw_schema,
         "audit_log": audit_log,
+        "data_quality_report": data_quality_report,
     }
