@@ -1,3 +1,15 @@
+"""DATA WEAVE — primary Streamlit workspace (Upload → Mapper → Transform → Downloads).
+
+Run locally from this project directory (either entrypoint is equivalent)::
+
+    streamlit run finalapp.py
+
+or::
+
+    streamlit run app_t3.py
+
+The app listens on **http://localhost:8511** (see ``.streamlit/config.toml``).
+"""
 import base64
 import html
 import io
@@ -15,6 +27,15 @@ import streamlit.components.v1 as components
 from urllib.parse import quote
 
 from dw_landing import enter_app_from_starter, render_starter_page
+from dw_url_api import (
+    AUTH_KEY_HEADER,
+    AUTH_KEY_QUERY,
+    AUTH_NONE,
+    AUTH_OPTIONS,
+    build_url_api_payload,
+    suggest_api_table_filename,
+    try_fetch_url_api_dataframe,
+)
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5000")
 
@@ -55,7 +76,7 @@ _DW_ICON_ACCOUNT_URI = _svg_data_uri(_DW_SVG_ACCOUNT_ICON)
 _DW_ICON_SUPPORT_URI = _svg_data_uri(_DW_SVG_SUPPORT_ICON)
 
 st.set_page_config(
-    page_title="DATA WEAVE · t3",
+    page_title="DATA WEAVE",
     page_icon=str(_DW_FAVICON) if _DW_FAVICON.is_file() else "📊",
     layout="wide",
 )
@@ -208,9 +229,26 @@ def _inject_styles() -> None:
                 min-height: calc(100vh - 5.75rem) !important;
                 box-sizing: border-box !important;
             }
+            /* Grows so Logout + optional support stay pinned to bottom */
+            [data-testid="stSidebar"] .block-container > div[data-testid="stVerticalBlock"]:has(.dw-sidebar-flex-spacer) {
+                flex: 1 1 auto !important;
+                min-height: 1.5rem !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            [data-testid="stSidebar"] .dw-sidebar-flex-spacer {
+                flex: 1 1 auto !important;
+                min-height: 2rem !important;
+            }
             [data-testid="stSidebar"] [data-testid="stVerticalBlock"]:has(.st-key-dw_sup_open),
             [data-testid="stSidebar"] [data-testid="stVerticalBlock"]:has(.st-key-dw_sup_restore) {
                 margin-top: auto !important;
+                border-top: 1px solid rgba(148, 163, 184, 0.35) !important;
+                padding-top: 0.85rem !important;
+            }
+            [data-testid="stSidebar"] .st-key-dw_sidebar_logout_wrap {
+                margin-top: 0 !important;
+                flex-shrink: 0 !important;
                 border-top: 1px solid rgba(148, 163, 184, 0.35) !important;
                 padding-top: 0.85rem !important;
             }
@@ -430,14 +468,17 @@ def _inject_styles() -> None:
                 background: #ddd6fe url("__DW_ICON_SUPPORT__") center / 70% no-repeat !important;
                 box-shadow: 0 4px 16px rgba(88, 28, 135, 0.35) !important;
             }
-            /* Upload panel support launcher — right edge below Add files */
-            section[data-testid="stMain"] .st-key-dw_support_upload_anchor {
+            /* Live support FAB — all pipeline steps (fixed bottom-right) */
+            section[data-testid="stMain"] .st-key-dw_support_global_anchor {
                 display: block !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                height: 0 !important;
+                min-height: 0 !important;
+                overflow: visible !important;
             }
-            section[data-testid="stMain"] .st-key-dw_support_upload_anchor .st-key-dw_sup_open button,
-            section[data-testid="stMain"] .st-key-dw_support_upload_anchor .st-key-dw_sup_restore button {
+            section[data-testid="stMain"] .st-key-dw_support_global_anchor .st-key-dw_sup_open button,
+            section[data-testid="stMain"] .st-key-dw_support_global_anchor .st-key-dw_sup_restore button {
                 position: fixed !important;
                 right: clamp(1.15rem, 2.4vw, 2rem) !important;
                 bottom: clamp(1.15rem, 3.6vh, 2rem) !important;
@@ -457,11 +498,114 @@ def _inject_styles() -> None:
                 border: 2px solid rgba(168, 85, 247, 0.55) !important;
                 box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
             }
-            section[data-testid="stMain"] .st-key-dw_support_upload_anchor .st-key-dw_sup_open button:hover,
-            section[data-testid="stMain"] .st-key-dw_support_upload_anchor .st-key-dw_sup_restore button:hover {
+            section[data-testid="stMain"] .st-key-dw_support_global_anchor .st-key-dw_sup_open button:hover,
+            section[data-testid="stMain"] .st-key-dw_support_global_anchor .st-key-dw_sup_restore button:hover {
                 border-color: #a855f7 !important;
                 background: #ddd6fe url("__DW_ICON_SUPPORT__") center / 70% no-repeat !important;
                 box-shadow: 0 4px 16px rgba(88, 28, 135, 0.35) !important;
+            }
+            /* Top bar — brand only (Logout lives in sidebar bottom) */
+            section[data-testid="stMain"] .st-key-dw_topbar_row > div[data-testid="stVerticalBlock"] {
+                position: sticky !important;
+                top: 3.5rem !important;
+                z-index: 998 !important;
+                margin: 0.35rem 0 0.85rem 0 !important;
+                padding: 0.35rem 0.75rem !important;
+                background: linear-gradient(92deg, #071014 0%, rgba(8, 47, 58, 0.85) 45%, rgba(6, 182, 212, 0.22) 100%) !important;
+                border: 1px solid rgba(34, 211, 238, 0.4) !important;
+                box-shadow:
+                    0 0 0 1px rgba(6, 182, 212, 0.12) inset,
+                    0 10px 36px rgba(0, 0, 0, 0.45) !important;
+            }
+            /* Sidebar bottom — Logout (door + label) */
+            [data-testid="stSidebar"] .st-key-dw_sidebar_logout button {
+                color: #94a3b8 !important;
+                font-weight: 500 !important;
+                font-size: 0.8rem !important;
+                border: none !important;
+                background: transparent !important;
+                padding: 0.45rem 0.5rem 0.45rem 0.35rem !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                gap: 0.45rem !important;
+                width: 100% !important;
+            }
+            [data-testid="stSidebar"] .st-key-dw_sidebar_logout button:hover {
+                color: #cffafe !important;
+                background: rgba(34, 211, 238, 0.08) !important;
+            }
+            [data-testid="stSidebar"] .st-key-dw_sidebar_logout button::before {
+                content: "" !important;
+                width: 1.05rem !important;
+                height: 1.05rem !important;
+                flex-shrink: 0 !important;
+                background-color: currentColor !important;
+                -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h6v-2H5V5h5V3zm4.83 3.17L19 10.34V8h2v8h-2v-2.34l-4.17 4.17-1.42-1.42L17.17 13H10v-2h7.17l-3.76-3.76 1.42-1.42z'/%3E%3C/svg%3E") !important;
+                mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M10 3H4a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h6v-2H5V5h5V3zm4.83 3.17L19 10.34V8h2v8h-2v-2.34l-4.17 4.17-1.42-1.42L17.17 13H10v-2h7.17l-3.76-3.76 1.42-1.42z'/%3E%3C/svg%3E") !important;
+                -webkit-mask-size: contain !important;
+                mask-size: contain !important;
+                -webkit-mask-repeat: no-repeat !important;
+                mask-repeat: no-repeat !important;
+            }
+            .dw-dataset-title {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                margin: 0 0 0.55rem 0;
+                min-width: 0;
+            }
+            .dw-dataset-title-ic {
+                font-size: 0.95rem;
+                line-height: 1;
+                flex-shrink: 0;
+                opacity: 0.92;
+            }
+            .dw-dataset-title-text {
+                flex: 1;
+                min-width: 0;
+                font-size: clamp(0.72rem, 0.45vw + 0.62rem, 0.86rem);
+                font-weight: 600;
+                letter-spacing: 0.02em;
+                line-height: 1.3;
+                color: #b8d9eb;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            /* Upload step — “Files in session” filenames (match Mapper visibility) */
+            .dw-session-file-row {
+                display: flex;
+                align-items: baseline;
+                flex-wrap: nowrap;
+                gap: 0.35rem;
+                margin: 0.2rem 0 0.35rem 0;
+                min-width: 0;
+                font-size: 0.78rem;
+                line-height: 1.35;
+            }
+            .dw-session-file-ic {
+                flex-shrink: 0;
+                opacity: 0.9;
+            }
+            .dw-session-file-name {
+                flex: 0 1 auto;
+                min-width: 0;
+                max-width: 58%;
+                font-weight: 600;
+                color: #b8d9eb;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .dw-session-file-meta {
+                flex: 1 1 auto;
+                min-width: 0;
+                color: #94a3b8;
+                font-size: 0.74rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             /* Login / account — top row: icon flush left */
             [data-testid="stSidebar"] .st-key-dw_account_tile {
@@ -994,6 +1138,7 @@ def _dw_logout_click() -> None:
 _SUPPORT_FAQ_TOPICS: Dict[str, str] = {
     "Upload & files": (
         "**Upload (Step 1):** Drag and drop CSVs or use **Add files → Browse files**. "
+        "You can also add data via **URL API** or **Add database** (name + password; prototype only). "
         "Files stay in your session for Mapper through Downloads. Use **Clear** on Upload if you need a fresh start."
     ),
     "Mapper & schema": (
@@ -1412,6 +1557,27 @@ def _render_dw_support_launcher() -> None:
     if st.button("\u200b", key=key, use_container_width=False):
         st.session_state.dw_support_ui = "open"
         st.rerun()
+
+
+def _dw_dataset_title(name: str) -> None:
+    """Single-line dataset name in Mapper preview tabs: pale blue, ellipsis when long."""
+    safe = html.escape(str(name))
+    st.markdown(
+        f'<div class="dw-dataset-title"><span class="dw-dataset-title-ic" aria-hidden="true">📄</span>'
+        f'<span class="dw-dataset-title-text">{safe}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _dw_session_file_row(fname: str, sz: str, rows: int) -> None:
+    """Upload page — session file line: compact name + meta (single-line friendly)."""
+    safe = html.escape(str(fname))
+    st.markdown(
+        f'<div class="dw-session-file-row"><span class="dw-session-file-ic" aria-hidden="true">📄</span>'
+        f'<span class="dw-session-file-name">{safe}</span>'
+        f'<span class="dw-session-file-meta">· <strong>{html.escape(sz)}</strong> · {rows:,} rows</span></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def _reset_mapper_outputs() -> None:
@@ -2573,16 +2739,30 @@ for idx, page_name in enumerate(PAGES):
         type="primary" if st.session_state.page_idx == idx else "secondary",
     )
 
-current = PAGES[st.session_state.page_idx]
-
-st.markdown(
-    """
-    <div class="dw-topbar">
-        <div class="dw-topbar-text">DATA WEAVE</div>
-    </div>
-    """,
+st.sidebar.markdown(
+    '<div class="dw-sidebar-flex-spacer" aria-hidden="true"></div>',
     unsafe_allow_html=True,
 )
+
+with st.sidebar.container(key="dw_sidebar_logout_wrap"):
+    st.button(
+        "Logout",
+        key="dw_sidebar_logout",
+        type="tertiary",
+        on_click=_dw_logout_click,
+        use_container_width=True,
+    )
+
+current = PAGES[st.session_state.page_idx]
+
+with st.container(key="dw_topbar_row"):
+    st.markdown(
+        '<div class="dw-topbar-text" style="padding:0.55rem 0;text-align:center;">DATA WEAVE</div>',
+        unsafe_allow_html=True,
+    )
+
+with st.container(key="dw_support_global_anchor"):
+    _render_dw_support_launcher()
 
 if st.session_state.get("dw_account_ui") == "open":
     if _open_dw_account_window is not None:
@@ -2604,7 +2784,7 @@ if st.session_state.get("dw_support_ui") == "open":
 # Page 1: Upload / dashboard
 # -----------------------------------------------------------------------------
 if current == "Upload":
-    _hero("Step 1", "Upload", "Upload csv, URL API, or Google Drive source")
+    _hero("Step 1", "Upload", "Upload csv, URL API, or connect a database (prototype)")
     mc1, mc2, mc3 = st.columns(3)
     with mc1:
         st.metric("Sources in session", len(st.session_state.uploaded_dfs))
@@ -2626,8 +2806,8 @@ if current == "Upload":
             if st.button("Upload url api", key="add_menu_api", use_container_width=True):
                 st.session_state.source_mode = "Upload url api"
                 st.rerun()
-            if st.button("Connect google drive", key="add_menu_drive", use_container_width=True):
-                st.session_state.source_mode = "Connect google drive"
+            if st.button("Add database", key="add_menu_database", use_container_width=True):
+                st.session_state.source_mode = "Add database"
                 st.rerun()
 
     st.markdown(
@@ -2710,41 +2890,126 @@ if current == "Upload":
                     st.markdown("**Files in session**")
                     for fname, df in st.session_state.uploaded_dfs.items():
                         sz = _format_session_csv_size(df)
-                        st.markdown(f"- 📄 `{fname}` · **{sz}** · {len(df):,} rows")
+                        _dw_session_file_row(fname, sz, len(df))
             elif mode == "Upload url api":
-                st.caption("Paste your API endpoint URL")
+                st.markdown("##### Add dataset from API")
+                st.caption(
+                    "Configure the endpoint and auth. The UI builds JSON: "
+                    "`source_type`, `url`, `headers`, and `params` for your backend."
+                )
                 st.text_input(
                     "API URL",
                     key="upload_api_url_field",
                     placeholder="https://api.example.com/data",
                 )
-            else:
-                st.caption("Paste a Google Drive file or folder link")
+                st.selectbox("Auth Type", AUTH_OPTIONS, key="upload_api_auth_type")
+                _auth_sel = st.session_state.get("upload_api_auth_type", AUTH_NONE)
+                if _auth_sel != AUTH_NONE:
+                    st.text_input(
+                        "Token / Key value",
+                        type="password",
+                        key="upload_api_token",
+                        autocomplete="new-password",
+                        placeholder="Stored only in this browser session",
+                    )
+                if _auth_sel == AUTH_KEY_HEADER:
+                    st.text_input(
+                        "Header name",
+                        key="upload_api_header_name",
+                        placeholder="X-API-Key",
+                    )
+                if _auth_sel == AUTH_KEY_QUERY:
+                    st.text_input(
+                        "Param name",
+                        key="upload_api_param_name",
+                        placeholder="api_key",
+                    )
                 st.text_input(
-                    "Google Drive file/folder link",
-                    key="upload_drive_link_field",
-                    placeholder="https://drive.google.com/file/d/...",
+                    "Extra query params (optional)",
+                    key="upload_api_extra_params",
+                    placeholder="limit=100&page=1",
+                    help="Parsed into `params` (merged with API key param when applicable).",
                 )
-                st.link_button("Open Google Drive", "https://drive.google.com/", use_container_width=True)
+                _pl_preview, _pl_prev_errs = build_url_api_payload(
+                    st.session_state.get("upload_api_url_field", "") or "",
+                    _auth_sel,
+                    st.session_state.get("upload_api_token", "") if _auth_sel != AUTH_NONE else "",
+                    st.session_state.get("upload_api_header_name", "") if _auth_sel == AUTH_KEY_HEADER else "",
+                    st.session_state.get("upload_api_param_name", "") if _auth_sel == AUTH_KEY_QUERY else "",
+                    st.session_state.get("upload_api_extra_params", ""),
+                )
+                with st.expander("Request payload preview", expanded=False):
+                    if _pl_prev_errs:
+                        st.caption("Resolve validation messages below before loading.")
+                    st.json(_pl_preview)
+
+                if st.button("Load dataset from API", key="upload_submit_api", use_container_width=True):
+                    _a = st.session_state.get("upload_api_auth_type", AUTH_NONE)
+                    pl, errs = build_url_api_payload(
+                        st.session_state.get("upload_api_url_field", "") or "",
+                        _a,
+                        st.session_state.get("upload_api_token", "") if _a != AUTH_NONE else "",
+                        st.session_state.get("upload_api_header_name", "") if _a == AUTH_KEY_HEADER else "",
+                        st.session_state.get("upload_api_param_name", "") if _a == AUTH_KEY_QUERY else "",
+                        st.session_state.get("upload_api_extra_params", ""),
+                    )
+                    if errs:
+                        for msg in errs:
+                            st.error(msg)
+                    else:
+                        st.session_state.url_api_last_payload = pl
+                        _reset_mapper_outputs()
+                        st.session_state.run_logs = []
+                        df = try_fetch_url_api_dataframe(pl)
+                        if df is not None and not df.empty:
+                            fname = suggest_api_table_filename(pl)
+                            st.session_state.uploaded_dfs = {fname: df}
+                        else:
+                            st.session_state.uploaded_dfs = {
+                                "api_data.csv": pd.DataFrame({"id": [1, 2], "value": [100, 200]})
+                            }
+                            st.warning(
+                                "Live fetch did not return usable CSV/JSON — loaded **demo** data. "
+                                "Check URL, auth, and response shape."
+                            )
+                        st.rerun()
+            else:
+                st.caption("Connect a database (credentials stay in this session only; not wired to a live server).")
+                st.text_input(
+                    "Database name",
+                    key="upload_db_name_field",
+                    placeholder="e.g. analytics_warehouse",
+                )
+                st.text_input(
+                    "Database password",
+                    type="password",
+                    key="upload_db_password_field",
+                    autocomplete="new-password",
+                    placeholder="••••••••",
+                )
+                if st.button("Connect to database", key="upload_submit_database", use_container_width=True, type="primary"):
+                    dbn = (st.session_state.get("upload_db_name_field") or "").strip()
+                    if not dbn:
+                        st.warning("Enter a database name.")
+                    else:
+                        _reset_mapper_outputs()
+                        st.session_state.run_logs = []
+                        slug = re.sub(r"[^\w.\-]+", "_", dbn).strip("._") or "database"
+                        slug = slug[:60]
+                        fname = f"{slug}_preview.csv"
+                        st.session_state.uploaded_dfs = {
+                            fname: pd.DataFrame(
+                                {
+                                    "id": [1, 2, 3],
+                                    "label": ["row_a", "row_b", "row_c"],
+                                    "source_db": [dbn, dbn, dbn],
+                                }
+                            )
+                        }
+                        st.rerun()
         with row[1]:
             st.markdown("<br/>", unsafe_allow_html=True)
             _add_files_menu()
-            with st.container(key="dw_support_upload_anchor"):
-                _render_dw_support_launcher()
-        if mode == "Upload url api":
-            if st.button("Submit API URL", key="upload_submit_api", use_container_width=True):
-                _reset_mapper_outputs()
-                st.session_state.run_logs = []
-                st.session_state.uploaded_dfs = {
-                    "api_data.csv": pd.DataFrame({"id": [1, 2], "value": [100, 200]})
-                }
-        elif mode == "Connect google drive":
-            if st.button("Use Google Drive link", key="upload_submit_drive", use_container_width=True):
-                _reset_mapper_outputs()
-                st.session_state.run_logs = []
-                st.session_state.uploaded_dfs = {
-                    "drive_data.csv": pd.DataFrame({"id": [1, 2], "name": ["A", "B"]})
-                }
 
     if mode == "Upload csv":
         if st.session_state.trigger_csv_picker:
@@ -2814,7 +3079,7 @@ elif current == "Mapper":
                 sk = re.sub(r"[^\w]+", "_", name)[:80]
                 title_col, tools_col = st.columns([1, 2])
                 with title_col:
-                    st.markdown(f"### 📄 {name}")
+                    _dw_dataset_title(name)
                 with tools_col:
                     search_q = st.text_input(
                         "search_preview",
@@ -2842,7 +3107,7 @@ elif current == "Mapper":
         with t2:
             for name, df in st.session_state.uploaded_dfs.items():
                 sk = re.sub(r"[^\w]+", "_", name)[:80]
-                st.markdown(f"### 📄 {name}")
+                _dw_dataset_title(name)
                 _render_searchable_dataframe(
                     profile_dataframe(df),
                     key_prefix=f"prof_{sk}",
