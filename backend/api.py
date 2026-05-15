@@ -193,7 +193,7 @@ def run_pipeline_endpoint():
         source_path = body.get("source_path") or _uploaded_file_path or "datasets/coursea_data.csv"
         source_config = {"path": source_path}
 
-    elif source_type == "api":
+    elif source_type == "url_api":
         source_config = {
             "symbol": body.get("symbol"),
             "interval": body.get("interval", "Daily"),
@@ -203,15 +203,36 @@ def run_pipeline_endpoint():
         missing = [k for k, v in source_config.items() if not v]
         if missing:
             return jsonify({
-                "status": "error",
-                "error": f"Missing required API source fields: {missing}"
-            }), 400
+            "status": "error",
+            "error": f"Missing required API source fields: {missing}"
+        }), 400
         source_path = None
 
+    elif source_type == "rdbms":
+        connection_string = body.get("connection_string")
+        query = body.get("query")
+        table = body.get("table")
+
+        if not connection_string:
+            return jsonify({
+                "status": "error",
+                "error": "Missing required field: connection_string"
+            }), 400
+        if not query and not table:
+            return jsonify({
+                "status": "error",
+                "error": "Provide either 'query' or 'table' for RDBMS source."
+            }), 400
+        source_config = {
+            "connection_string": connection_string,
+            "query": query,
+            "table": table,
+        }
+        source_path = None
     else:
         return jsonify({
             "status": "error",
-            "error": f"Unsupported source_type '{source_type}'. Use 'csv' or 'api'."
+            "error": f"Unsupported source_type '{source_type}'. Use 'csv', 'url_api', or 'rdbms'."
         }), 400
 
     os.makedirs("output", exist_ok=True)
@@ -306,18 +327,46 @@ def run_pipeline_stream():
     if source_type == "csv":
         source_path = body.get("source_path") or _uploaded_file_path or "datasets/coursea_data.csv"
         source_config = {"path": source_path}
-    elif source_type == "api":
+
+    elif source_type == "url_api":
         source_config = {
-            "symbol": body.get("symbol"),
-            "interval": body.get("interval", "Daily"),
-            "apikey": body.get("apikey"),
+        "symbol": body.get("symbol"),
+        "interval": body.get("interval", "Daily"),
+        "apikey": body.get("apikey"),
+    }
+
+    elif source_type == "rdbms":
+        connection_string = body.get("connection_string")
+        query = body.get("query")
+        table = body.get("table")
+
+        if not connection_string:
+            def err_gen():
+                import json as _json
+                yield f"data: {_json.dumps({'type': 'error', 'node': '__error__', 'error': 'Missing required field: connection_string'})}\n\n"
+            return Response(stream_with_context(err_gen()), mimetype="text/event-stream")
+
+        if not query and not table:
+            def err_gen():
+                import json as _json
+                yield f"data: {_json.dumps({'type': 'error', 'node': '__error__', 'error': 'Provide either query or table for RDBMS source.'})}\n\n"
+            return Response(stream_with_context(err_gen()), mimetype="text/event-stream")
+
+        source_config = {
+            "connection_string": connection_string,
+            "query": query,
+            "table": table,
         }
     else:
         def err_gen():
             import json as _json
             yield f"data: {_json.dumps({'node': '__error__', 'error': f'Unsupported source_type: {source_type}'})}\n\n"
-        return Response(stream_with_context(err_gen()), mimetype="text/event-stream")
 
+        return Response(
+            stream_with_context(err_gen()),
+            mimetype="text/event-stream"
+        )
+    
     os.makedirs("output", exist_ok=True)
 
     initial_state = {
@@ -451,7 +500,7 @@ def run_plan_stream():
     if source_type == "csv":
         source_path = body.get("source_path") or _uploaded_file_path or "datasets/coursea_data.csv"
         source_config = {"path": source_path}
-    elif source_type == "api":
+    elif source_type == "url_api":
         source_config = {
             "symbol": body.get("symbol"),
             "interval": body.get("interval", "Daily"),

@@ -9,10 +9,9 @@ Supports writing to:
 import json
 import os
 from datetime import datetime
-
+ 
 import pandas as pd
 from sqlalchemy import create_engine
-
 
 def _write_file(df: pd.DataFrame, target_path: str):
     os.makedirs(os.path.dirname(os.path.abspath(target_path)), exist_ok=True)
@@ -22,7 +21,6 @@ def _write_file(df: pd.DataFrame, target_path: str):
             json.dump(df.to_dict(orient="records"), f, indent=2, default=str)
     else:
         df.to_csv(target_path, index=False)
-
 
 def _write_db(df: pd.DataFrame, target_db: dict):
     connection_string = target_db.get("connection_string")
@@ -41,7 +39,6 @@ def _write_db(df: pd.DataFrame, target_db: dict):
     engine = create_engine(connection_string)
     with engine.begin() as conn:
         df.to_sql(table, con=conn, if_exists=if_exists, index=False)
-
 
 def loader_node(state: dict) -> dict:
     transformed_data = state.get("transformed_data", [])
@@ -73,3 +70,4 @@ def loader_node(state: dict) -> dict:
     })
 
     return {"audit_log": audit_log}
+
